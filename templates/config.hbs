@@ -1,0 +1,127 @@
+{{#*inline "options"}}
+  {{#each this}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+{{/inline}}
+{{#*inline "rewards"}}
+  {{#each groups}}
+  <div class="harvest-list">
+    <h3>{{name}}</h3>
+    {{#if rows.length}}
+    <ul>
+      {{#each rows}}
+      <li>
+        {{#if img}}<img src="{{img}}" alt="">{{/if}}
+        <span>{{name}}</span>
+        {{#if (eq ../type "Item")}}
+        <label class="harvest-quantity-toggle" data-tooltip="Each whole number from the minimum to the maximum, inclusive, has an equal chance."><input type="checkbox" data-random-quantity="{{../field}}.{{@index}}" data-refresh {{checked randomQuantity}}> Range</label>
+        {{/if}}
+        {{#if randomQuantity}}
+        <label class="harvest-quantity-bound"><span>Min</span><input type="number" data-field="{{../field}}.{{@index}}.minQuantity" value="{{minQuantity}}" min="0" max="999" aria-label="Minimum quantity of {{name}}" required></label>
+        <label class="harvest-quantity-bound"><span>Max</span><input type="number" data-field="{{../field}}.{{@index}}.maxQuantity" value="{{maxQuantity}}" min="0" max="999" aria-label="Maximum quantity of {{name}}" required></label>
+        {{else}}
+        <input type="number" data-field="{{../field}}.{{@index}}.quantity" value="{{quantity}}" min="1"
+          {{#if (eq ../type "RollTable")}}max="20" aria-label="Number of draws for {{name}}"{{else}}max="999" aria-label="Quantity of {{name}}"{{/if}} required>
+        {{/if}}
+        <button type="button" class="harvest-icon" data-action="removeReference" data-field="{{../field}}" data-index="{{@index}}" aria-label="Remove {{name}}"><i class="fa-solid fa-trash" inert></i></button>
+      </li>
+      {{/each}}
+    </ul>
+    {{/if}}
+    <div class="harvest-drop" data-drop="{{field}}" data-type="{{type}}"><i class="fa-solid fa-download" inert></i> Drop {{name}} here</div>
+  </div>
+  {{/each}}
+{{/inline}}
+
+<div class="harvest-sheet-body" data-harvest-config>
+  <header class="harvest-sheet-heading">
+    {{#if img}}<img class="document-image" src="{{img}}" alt="">{{/if}}
+    {{#if isDefaults}}<div><h2>{{sectionTitle}}</h2></div>
+    {{else}}<div><p class="harvest-sheet-kind">{{sectionTitle}}</p><h2>{{subjectName}}</h2></div>{{/if}}
+  </header>
+  {{#if isRules}}
+  {{#unless isDefaults}}
+  <label class="harvest-field harvest-enable"><strong>{{harvestText "Enable Harvest" lootMode}}</strong><input type="checkbox" data-enable-harvest {{checked harvestEnabled}}></label>
+  {{/unless}}
+  <label class="harvest-field harvest-defeated-only"><span>{{harvestText "Enable harvest only at 0 hit points or fewer" lootMode}}</span><input type="checkbox" data-field="defeatedOnly" data-refresh {{checked rules.defeatedOnly}}></label>
+  <label class="harvest-field"><span>Use Loot wording <small>Change labels, nameplates, chat text, and outcome sounds independently of the HP requirement.</small></span><input type="checkbox" data-field="lootMode" data-refresh {{checked rules.lootMode}}></label>
+  {{/if}}
+  <main class="harvest-content">
+    {{#if isRules}}
+    {{#if isDefaults}}<p class="hint">{{harvestText "New harvests and actor templates start with these settings." lootMode}}</p>{{/if}}
+    {{#if isTemplate}}<p class="hint">{{harvestText "Drag this actor onto the canvas to place a node with its own remaining harvests and rewards." lootMode}}</p>{{/if}}
+    <label class="harvest-field"><span>Display Name</span><input type="text" data-field="name" value="{{rules.name}}" placeholder="{{namePlaceholder}}" maxlength="120"></label>
+    <div class="harvest-editor">
+      <h3>Description</h3>
+      <prose-mirror name="description" value="{{rules.description}}" toggled></prose-mirror>
+    </div>
+    <label class="harvest-field"><span>{{harvestText "Harvest Method" lootMode}}</span><select data-field="mode" data-refresh>{{> options modes}}</select></label>
+    {{#if isSkill}}
+    <label class="harvest-field"><span>Skill</span><select data-field="skill">{{> options skills}}</select></label>
+    {{/if}}
+    {{#if isAbility}}
+    <label class="harvest-field"><span>Ability</span><select data-field="ability">{{> options abilities}}</select></label>
+    {{/if}}
+    {{#if isTool}}
+    <label class="harvest-field"><span>Tool <small>Requires an inventory Tool item with this Base Tool classification. Item names and proficiency alone do not qualify.</small></span><select data-field="tool">{{> options tools}}</select></label>
+    {{/if}}
+    {{#if isChecked}}
+    <label class="harvest-field"><span>Difficulty Class</span><input type="number" data-field="dc" min="1" max="99" value="{{rules.dc}}" required></label>
+    {{/if}}
+    <label class="harvest-field"><span>Use World Interaction Distance <small>World default {{worldDistance}} grid units.</small></span><input type="checkbox" data-world-distance data-refresh {{checked useWorldDistance}}></label>
+    {{#unless useWorldDistance}}
+    <label class="harvest-field"><span>Interaction Distance <small>Grid units. Leave empty or set 0 for unlimited.</small></span><input type="number" data-field="distance" value="{{rules.distance}}" min="0" step="1" placeholder="Unlimited"></label>
+    {{/unless}}
+    <label class="harvest-field"><span>{{harvestText "Available Harvests" lootMode}} <small>{{harvestText "Every success or failure uses one harvest. 0 allows unlimited harvests." lootMode}}</small></span><input type="number" data-field="harvestLimit" min="0" max="999" value="{{rules.harvestLimit}}" required></label>
+    {{/if}}
+
+    {{#if isRewards}}
+    <label class="harvest-field"><span>Show Base Items to Players</span><input type="checkbox" data-field="revealItems" {{checked rules.revealItems}}></label>
+    <label class="harvest-field"><span>Show Base Tables to Players</span><input type="checkbox" data-field="revealTables" {{checked rules.revealTables}}></label>
+    {{> rewards base}}
+    {{#if canEditMacro}}<section class="harvest-list">
+      <h3>Reward Macro</h3>
+      <p class="hint">Runs on a successful attempt alongside the item and table rewards. Leave the reward lists empty for a macro-only result.</p>
+      {{#if rules.macro}}
+      <ul><li>
+        {{#if macro.img}}<img src="{{macro.img}}" alt="">{{/if}}
+        <span>{{#if macro}}{{macro.name}}{{else}}Missing macro{{/if}}</span>
+        <button type="button" class="harvest-icon" data-action="removeReference" data-field="macro" aria-label="Remove macro"><i class="fa-solid fa-trash" inert></i></button>
+      </li></ul>
+      <label class="harvest-field"><span>Run Macro On</span><select data-field="macroClient">{{> options macroClients}}</select></label>
+      {{/if}}
+      <div class="harvest-drop" data-drop="macro" data-type="Macro"><i class="fa-solid fa-download" inert></i> Drop a Macro here</div>
+    </section>{{/if}}
+    {{/if}}
+
+    {{#if isBonuses}}
+    {{#if (eq rules.mode "free")}}<p class="hint">{{harvestText "Roll outcomes apply when this harvest requires a check." lootMode}}</p>{{/if}}
+    <label class="harvest-field"><span>Natural 20 <small>World reward doubling is {{worldCritical}}.</small></span><select data-field="critical" data-refresh>{{> options critical}}</select></label>
+    {{#if criticalRewards}}
+    <section class="harvest-tier"><h3>Natural 20 Rewards</h3>{{> rewards criticalRewards}}</section>
+    {{/if}}
+    <label class="harvest-field"><span>Natural 1 <small>World behavior — {{worldNaturalOne}}.</small></span><select data-field="naturalOne" data-refresh>{{> options naturalOne}}</select></label>
+    {{#if mishap}}
+    <section class="harvest-tier"><h3>Alternate Rewards</h3>{{> rewards mishap}}</section>
+    {{/if}}
+    <section class="harvest-thresholds">
+      <header><h3>Reward Thresholds</h3><button type="button" data-action="addTier"><i class="fa-solid fa-plus" inert></i> Add Threshold</button></header>
+      {{#if tiers.length}}<p class="hint">Every passed threshold applies. Doubling multiplies the combined rewards.</p>{{/if}}
+      {{#each tiers}}
+      <section class="harvest-tier">
+        <div class="harvest-tier-heading">
+          <label>Total Above <input type="number" data-field="{{path}}.above" min="-99" max="999" value="{{above}}" required></label>
+          <label><input type="checkbox" data-field="{{path}}.double" {{checked double}}> Double Rewards</label>
+          <button type="button" class="harvest-icon" data-action="removeTier" data-index="{{index}}" aria-label="Remove threshold"><i class="fa-solid fa-trash" inert></i></button>
+        </div>
+        {{> rewards this}}
+      </section>
+      {{/each}}
+    </section>
+    {{/if}}
+  </main>
+  <footer class="sheet-footer harvest-footer">
+    <button type="button" data-action="save"><i class="fa-solid fa-floppy-disk" inert></i> {{labels.save}}</button>
+    {{#if canUnlock}}<button type="button" data-action="unlock"><i class="fa-solid fa-lock-open" inert></i> Unlock</button>{{/if}}
+    {{#if canReset}}<button type="button" data-action="reset"><i class="fa-solid fa-rotate-left" inert></i> Reset</button>{{/if}}
+    {{#if existing}}<button type="button" data-action="remove"><i class="fa-solid {{#if isDefaults}}fa-rotate-left{{else}}fa-trash{{/if}}" inert></i> {{labels.remove}}</button>{{/if}}
+  </footer>
+</div>

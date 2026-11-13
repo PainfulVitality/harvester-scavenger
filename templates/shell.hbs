@@ -1,0 +1,29 @@
+<div class="harvest-shell">
+{{{content}}}
+{{#if showTabs}}
+<nav class="harvest-tabs harvest-tab-rail" role="tablist" aria-label="{{harvestText "Harvest sections" lootMode}}" aria-orientation="vertical">
+  {{#unless configurationOnly}}
+  <button type="button" role="tab" class="harvest-tab {{#if isHarvest}}harvest-tab-active{{/if}}"
+    data-action="chooseSection" data-section="harvest" aria-selected="{{isHarvest}}" tabindex="{{#if isHarvest}}0{{else}}-1{{/if}}"
+    aria-label="{{harvestText "Harvest" lootMode}}" data-tooltip="{{harvestText "Harvest" lootMode}}" {{disabled pending}}>
+    <i class="icon fa-solid fa-leaf" aria-hidden="true"></i><span class="tab-label">{{harvestText "Harvest" lootMode}}</span>
+  </button>
+  {{/unless}}
+  <button type="button" role="tab" class="harvest-tab {{#if isRewards}}harvest-tab-active{{/if}}"
+    data-action="chooseSection" data-section="rewards" aria-selected="{{isRewards}}" tabindex="{{#if isRewards}}0{{else}}-1{{/if}}"
+    aria-label="Rewards" data-tooltip="Rewards" {{disabled pending}}>
+    <i class="icon fa-solid fa-gem" aria-hidden="true"></i><span class="tab-label">Rewards</span>
+  </button>
+  <button type="button" role="tab" class="harvest-tab {{#if isBonuses}}harvest-tab-active{{/if}}"
+    data-action="chooseSection" data-section="bonuses" aria-selected="{{isBonuses}}" tabindex="{{#if isBonuses}}0{{else}}-1{{/if}}"
+    aria-label="Roll Outcomes" data-tooltip="Roll Outcomes" {{disabled pending}}>
+    <i class="icon fa-solid fa-dice-d20" aria-hidden="true"></i><span class="tab-label">Roll Outcomes</span>
+  </button>
+  <button type="button" role="tab" class="harvest-tab {{#if isSettings}}harvest-tab-active{{/if}}"
+    data-action="chooseSection" data-section="settings" aria-selected="{{isSettings}}" tabindex="{{#if isSettings}}0{{else}}-1{{/if}}"
+    aria-label="{{harvestText "Harvest Settings" lootMode}}" data-tooltip="{{harvestText "Harvest Settings" lootMode}}" {{disabled pending}}>
+    <i class="icon fa-solid fa-gear" aria-hidden="true"></i><span class="tab-label">{{harvestText "Harvest Settings" lootMode}}</span>
+  </button>
+</nav>
+{{/if}}
+</div>

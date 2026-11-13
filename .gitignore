@@ -1,0 +1,21 @@
+# Generated release archives
+/releases/
+/previews/
+
+# Local tooling and credentials
+/.agents/
+/.codex/
+/.aws/
+.env
+.env.*
+!.env.example
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Editor and operating system files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

@@ -1,0 +1,123 @@
+<div class="harvest-sheet-body harvest-player">
+  <header class="harvest-sheet-heading">
+    <img class="document-image" src="{{img}}" alt="">
+    <div><p class="harvest-sheet-kind">{{harvestText "Harvest" lootMode}}</p><h2>{{name}}</h2></div>
+  </header>
+  <main class="harvest-content">
+    {{#if description}}<div class="harvest-description">{{{description}}}</div>{{/if}}
+
+    <section class="harvest-status" data-outcome="{{cardOutcome}}" aria-label="{{harvestText "Harvest status" lootMode}}">
+      <header class="harvest-check-heading">
+        <i class="fa-solid {{statusIcon}}" aria-hidden="true"></i>
+        <h3>{{statusTitle}}</h3>
+      </header>
+      <div class="harvest-check" data-status="{{status}}" data-outcome="{{cardOutcome}}">
+        <div class="harvest-check-main">
+          <div class="harvest-check-copy">
+            <p class="harvest-check-help">{{statusHelp}}</p>
+
+            <div class="harvest-progress">
+              {{#if harvestSlots.length}}
+              <div class="harvest-marker-groups" role="img" aria-label="{{progressLabel}}" data-tooltip="{{progressLabel}}">
+                {{#each harvestSlotGroups}}
+                <div class="harvest-marker-group" aria-hidden="true">
+                  <span class="harvest-marker-label">{{label}}</span>
+                  <div class="harvest-slots">
+                    {{#each slots}}<span class="harvest-slot" data-state="{{this}}"></span>{{/each}}
+                  </div>
+                </div>
+                {{/each}}
+              </div>
+              {{else}}
+              <dl class="harvest-counters">
+                <div><dt>{{harvestText "Harvests remaining" lootMode}}</dt><dd>{{remaining}}</dd></div>
+                {{#if showFailures}}<div class="harvest-failed-count"><dt>{{harvestText "Failed harvests" lootMode}}</dt><dd>{{failures}}</dd></div>{{/if}}
+              </dl>
+              {{/if}}
+            </div>
+          </div>
+          {{#if showDC}}
+          <div class="harvest-dc" role="img" aria-label="Difficulty Class {{dc}}">
+            <svg class="harvest-dc-crest" viewBox="0 0 104 112" fill="none" aria-hidden="true" focusable="false">
+              <path class="crest-face" d="M52 3 96 28V82L52 109 8 82V28Z"/>
+              <path class="crest-facet crest-facet-light" d="M52 3 96 28 84 35 52 16 20 35 8 28Z"/>
+              <path class="crest-facet crest-facet-shade" d="M8 82 20 75 52 94 84 75 96 82 52 109Z"/>
+              <path class="crest-outline" d="M52 3 96 28V82L52 109 8 82V28Z"/>
+              <path class="crest-inset" d="M52 16 84 35V75L52 94 20 75V35Z"/>
+              <path class="crest-seams" d="M52 3V16M96 28 84 35M96 82 84 75M52 109V94M8 82 20 75M8 28 20 35"/>
+            </svg>
+            <span class="harvest-dc-label" aria-hidden="true">DC</span>
+            <strong class="harvest-dc-value" aria-hidden="true">{{dc}}</strong>
+          </div>
+          {{/if}}
+        </div>
+        {{#if canUnlock}}
+        <button type="button" data-action="unlockHarvest" {{disabled managing}}>
+          <i class="fa-solid fa-lock-open" inert></i> {{harvestText "Unlock Harvest" lootMode}}
+        </button>
+        {{/if}}
+      </div>
+    </section>
+
+    {{#if items.length}}
+    <section class="harvest-list">
+      <h3 class="harvest-section-heading"><i class="fa-solid fa-gem" aria-hidden="true"></i> Items</h3>
+      <ul>
+        {{#each items}}
+        <li>{{#if previewKey}}<a class="harvest-item-preview" role="button" tabindex="0" data-action="inspectReward" data-reference="{{previewKey}}" aria-label="View {{name}}">{{#if img}}<img src="{{img}}" alt="">{{/if}}<span>{{name}}</span></a>{{else}}{{#if unknown}}<i class="fa-solid fa-question" aria-hidden="true"></i>{{else}}{{#if img}}<img src="{{img}}" alt="">{{/if}}{{/if}}<span>{{name}}</span>{{/if}}{{#if quantityLabel}}<small>×{{quantityLabel}}</small>{{/if}}</li>
+        {{/each}}
+      </ul>
+    </section>
+    {{/if}}
+    {{#if tables.length}}
+    <section class="harvest-list">
+      <h3 class="harvest-section-heading"><i class="fa-solid fa-table-list" aria-hidden="true"></i> Roll Tables</h3>
+      {{#each tables}}
+      {{#if unknown}}
+      <ul><li><i class="fa-solid fa-question" aria-hidden="true"></i><span>{{name}}</span></li></ul>
+      {{else}}
+      <details>
+        <summary>{{name}} <small>×{{quantity}}</small></summary>
+        <ul>
+          {{#each results}}<li><small>{{range}}</small>{{#if previewKey}}<a class="harvest-item-preview" role="button" tabindex="0" data-action="inspectReward" data-reference="{{previewKey}}" aria-label="View {{name}}">{{name}}</a>{{else}}<span>{{name}}</span>{{/if}}</li>{{/each}}
+        </ul>
+      </details>
+      {{/if}}
+      {{/each}}
+    </section>
+    {{/if}}
+
+    {{#if result}}
+    <div class="harvest-result" data-outcome="{{result.outcome}}" role="status">
+      <i class="fa-solid {{resultIcon}}" inert></i>
+      <strong>{{resultLabel}}</strong>
+      {{#unless (eq result.total null)}}<span>Roll {{result.total}}</span>{{/unless}}
+      {{#if result.warning}}<p>{{result.warning}}</p>{{/if}}
+    </div>
+    {{/if}}
+  </main>
+  <footer class="sheet-footer harvest-player-footer">
+    {{#if actor}}
+    <label class="harvest-recipient">
+      <img src="{{actor.img}}" alt="">
+      <span>{{harvestText "Harvest as" lootMode}}</span>
+      {{#if (gt choices.length 1)}}
+      <select data-harvester aria-label="{{harvestText "Harvest as" lootMode}}" {{disabled pending}}>
+        {{#each choices}}<option value="{{uuid}}" {{#if (eq uuid ../actor.uuid)}}selected{{/if}}>{{name}}</option>{{/each}}
+      </select>
+      {{else}}
+      <strong>{{actor.name}}</strong>
+      {{/if}}
+    </label>
+    {{else}}
+    <p class="hint">{{noActorHint}}</p>
+    {{/if}}
+    {{#if missingTool}}<p class="hint harvest-tool-requirement" id="{{requirementId}}" role="status">{{missingTool}}</p>{{/if}}
+    <div class="harvest-actions">
+      <button type="button" class="harvest-primary" data-action="harvest" {{#if missingTool}}aria-describedby="{{requirementId}}"{{/if}} {{disabled disabled}}>
+        <i class="fa-solid {{#if pending}}fa-spinner fa-spin{{else}}{{#if checked}}fa-dice-d20{{else}}fa-hand{{/if}}{{/if}}" inert></i> {{button}}
+      </button>
+      <button type="button" data-action="leave">Close</button>
+    </div>
+  </footer>
+</div>

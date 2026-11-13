@@ -1,0 +1,40 @@
+{
+  "id": "harvester-scavenger",
+  "title": "Harvester & Scavenger",
+  "description": "Harvest and loot tokens with D&D 5e checks, automatic item rewards, roll tables, and optional macros.",
+  "version": "1.13.2",
+  "socket": true,
+  "compatibility": {
+    "minimum": "14.367",
+    "verified": "14.370",
+    "maximum": "14"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "6.0.0",
+          "verified": "6.0.6"
+        }
+      }
+    ],
+    "requires": [
+      {
+        "id": "lib-wrapper",
+        "type": "module"
+      },
+      {
+        "id": "socketlib",
+        "type": "module"
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/main.mjs"
+  ],
+  "styles": [
+    "styles/harvest.css"
+  ]
+}
