@@ -1,3 +1,6 @@
+{{#*inline "shareReward"}}
+<button type="button" class="harvest-share-reward" data-action="shareReward" data-reference="{{previewKey}}" aria-label="Display {{name}} in chat" data-tooltip="Display in chat"><i class="fa-solid fa-comment" aria-hidden="true"></i></button>
+{{/inline}}
 <div class="harvest-sheet-body harvest-player">
   <header class="harvest-sheet-heading">
     <img class="document-image" src="{{img}}" alt="">
@@ -64,7 +67,7 @@
       <h3 class="harvest-section-heading"><i class="fa-solid fa-gem" aria-hidden="true"></i> Items</h3>
       <ul>
         {{#each items}}
-        <li>{{#if previewKey}}<a class="harvest-item-preview" role="button" tabindex="0" data-action="inspectReward" data-reference="{{previewKey}}" aria-label="View {{name}}">{{#if img}}<img src="{{img}}" alt="">{{/if}}<span>{{name}}</span></a>{{else}}{{#if unknown}}<i class="fa-solid fa-question" aria-hidden="true"></i>{{else}}{{#if img}}<img src="{{img}}" alt="">{{/if}}{{/if}}<span>{{name}}</span>{{/if}}{{#if quantityLabel}}<small>×{{quantityLabel}}</small>{{/if}}</li>
+        <li>{{#if previewKey}}<a class="harvest-item-preview" role="button" tabindex="0" data-action="inspectReward" data-reference="{{previewKey}}" aria-label="View {{name}}">{{#if img}}<img src="{{img}}" alt="">{{/if}}<span>{{name}}</span></a>{{else}}{{#if unknown}}<i class="fa-solid fa-question" aria-hidden="true"></i>{{else}}{{#if img}}<img src="{{img}}" alt="">{{/if}}{{/if}}<span>{{name}}</span>{{/if}}{{#if quantityLabel}}<small>×{{quantityLabel}}</small>{{/if}}{{#if previewKey}}{{> shareReward}}{{/if}}</li>
         {{/each}}
       </ul>
     </section>
@@ -79,7 +82,7 @@
       <details>
         <summary>{{name}} <small>×{{quantity}}</small></summary>
         <ul>
-          {{#each results}}<li><small>{{range}}</small>{{#if previewKey}}<a class="harvest-item-preview" role="button" tabindex="0" data-action="inspectReward" data-reference="{{previewKey}}" aria-label="View {{name}}">{{name}}</a>{{else}}<span>{{name}}</span>{{/if}}</li>{{/each}}
+          {{#each results}}<li><small>{{range}}</small>{{#if previewKey}}<a class="harvest-item-preview" role="button" tabindex="0" data-action="inspectReward" data-reference="{{previewKey}}" aria-label="View {{name}}">{{name}}</a>{{else}}<span>{{name}}</span>{{/if}}{{#if previewKey}}{{> shareReward}}{{/if}}</li>{{/each}}
         </ul>
       </details>
       {{/if}}

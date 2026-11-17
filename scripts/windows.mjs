@@ -1,3 +1,4 @@
+import { windowOutcomeMessage } from "./settings.mjs";
 import { matchingTool, toolLabel } from "./tools.mjs";
 import { ID, normalizeRules } from "./rules.mjs";
 import { getRecipeId, isHarvest, readHarvest, removeHarvest, saveRules } from "./store.mjs";
@@ -21,7 +22,7 @@ const checkLabel = (mode, key) => {
 };
 
 function report(error) {
-  ui.notifications.warn(error.message);
+  ui.notifications.warn(error instanceof Error ? error.message : "The harvest window could not complete this action.");
 }
 
 function actorChoices(target, distance) {
@@ -143,7 +144,8 @@ export class HarvestConfig extends BaseWindow {
       canUnlock: game.user.isGM && this.progress.locked,
       canEditMacro: game.user.isGM,
       useWorldDistance: rules.distance === null,
-      worldDistance: game.settings.get(ID, "interactionDistance") || "Unlimited",
+      worldDistanceLabel: game.settings.get(ID, "interactionDistance")
+        ? `${game.settings.get(ID, "interactionDistance")} grid units` : "Unlimited",
       isDefaults: this.scope === "defaults", isTemplate: this.scope === "Actor",
       harvestEnabled: this.harvestEnabled,
       isRules: this.tab === "rules", isRewards: this.tab === "rewards", isBonuses: this.tab === "bonuses",
@@ -174,6 +176,10 @@ export class HarvestConfig extends BaseWindow {
   _onRender(context, options) {
     super._onRender(context, options);
     this.activateRail();
+    if (this.controlFocus) {
+      this.element.querySelector(this.controlFocus)?.focus();
+      this.controlFocus = null;
+    }
     const root = this.element.querySelector("[data-harvest-config]");
     if (!root) return;
     root.querySelector("prose-mirror > .toggle")?.setAttribute("aria-label", "Edit description");
@@ -181,7 +187,7 @@ export class HarvestConfig extends BaseWindow {
       const element = event.target;
       if (element.hasAttribute("data-random-quantity")) {
         const entry = foundry.utils.getProperty(this.draft, element.dataset.randomQuantity);
-        entry.randomQuantity = element.checked;
+        entry.randomQuantity = element.value === "random";
         entry.minQuantity ??= 1;
         entry.maxQuantity ??= entry.quantity;
         return;
@@ -203,7 +209,13 @@ export class HarvestConfig extends BaseWindow {
     root.addEventListener("input", read);
     root.addEventListener("change", event => {
       read(event);
-      if (event.target.hasAttribute("data-refresh")) this.redraw();
+      if (event.target.hasAttribute("data-refresh")) {
+        this.controlFocus = event.target.dataset.randomQuantity
+          ? `[data-random-quantity="${event.target.dataset.randomQuantity}"]`
+          : event.target.dataset.field ? `[data-field="${event.target.dataset.field}"]`
+          : event.target.hasAttribute("data-world-distance") ? "[data-world-distance]" : null;
+        this.redraw();
+      }
     });
     for (const zone of root.querySelectorAll("[data-drop]")) {
       zone.addEventListener("dragover", event => { event.preventDefault(); zone.classList.add("drag-over"); });
@@ -221,15 +233,15 @@ export class HarvestConfig extends BaseWindow {
 
   activateRail() {
     this.element.querySelector(".harvest-tab-rail")?.addEventListener("keydown", event => {
-      const keys = ["ArrowUp", "ArrowDown", "Home", "End"];
+      const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"];
       if (!keys.includes(event.key)) return;
       event.preventDefault();
       const buttons = [...event.currentTarget.querySelectorAll("button:not(:disabled)")];
       const current = buttons.indexOf(document.activeElement);
       const index = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
-        : (current + (event.key === "ArrowUp" ? -1 : 1) + buttons.length) % buttons.length;
-      buttons[index]?.click();
+        : (current + (["ArrowUp", "ArrowLeft"].includes(event.key) ? -1 : 1) + buttons.length) % buttons.length;
       this.railFocus = index;
+      buttons[index]?.click();
     });
     if (this.railFocus !== undefined) {
       this.element.querySelectorAll(".harvest-tab-rail button")[this.railFocus]?.focus();
@@ -242,9 +254,10 @@ export class HarvestConfig extends BaseWindow {
     if (editor && this.draft) this.draft.description = editor.value;
   }
 
-  redraw() {
+  async redraw() {
     this.captureDescription();
-    return this.render();
+    try { return await this.render(); }
+    catch (error) { report(error); }
   }
 
   async drop(event, zone) {
@@ -362,6 +375,14 @@ class HarvestWindow extends HarvestConfig {
           return renderRewardPreview(preview.item);
         } catch (error) { report(error); }
       },
+      shareReward: async function (_event, target) {
+        if (target.disabled) return;
+        target.disabled = true;
+        try {
+          await request("shareReward", this.token, { reference: target.dataset.reference });
+        } catch (error) { report(error); }
+        finally { if (target.isConnected) target.disabled = false; }
+      },
       configure: function () { return this.changeSection("settings"); },
       chooseSection: function (_event, target) { return this.changeSection(target.dataset.section); },
       unlockHarvest: function () { return this.unlock(); },
@@ -430,7 +451,12 @@ class HarvestWindow extends HarvestConfig {
         : checked ? "A success will automatically add the items to your inventory." : "Items will automatically be added to your inventory."
     };
     let statusTitle = titles[data.status];
-    let statusHelp = help[data.status];
+    let statusHelp = nodeText(help[data.status], lootMode);
+    if (failed) statusHelp = windowOutcomeMessage("failure", statusHelp);
+    else if (data.status === "depleted" || (data.status === "ready"
+      && ["success", "critical"].includes(outcome ?? data.lastOutcome))) {
+      statusHelp = windowOutcomeMessage("success", statusHelp);
+    }
     let statusIcon = { locked: "fa-xmark", depleted: "fa-box-open", blocked: "fa-heart-pulse",
       ready: failed ? "fa-xmark" : checked ? "fa-dice-d20" : "fa-hand" }[data.status];
     if (this.pending || data.busy) {
@@ -439,6 +465,7 @@ class HarvestWindow extends HarvestConfig {
         : "Another character is harvesting this node.";
       statusIcon = "fa-spinner fa-spin";
     }
+    if (this.pending || data.busy) statusHelp = nodeText(statusHelp, lootMode);
     const harvestSlots = data.harvestLimit > 0 && data.harvestLimit <= 9
       ? Array.from({ length: data.harvestLimit }, (_, index) => index < data.harvests ? "success"
         : index < data.harvests + data.failures ? "failure" : "available") : [];
@@ -451,7 +478,7 @@ class HarvestWindow extends HarvestConfig {
     return {
       ...data, lootMode, description, actor, choices,
       noActorHint: data.distance ? distanceWarning(data.distance, lootMode) : nodeText("Select a token you own or assign a character to harvest.", lootMode),
-      check: nodeText(check, lootMode), checked, statusTitle: nodeText(statusTitle, lootMode), statusHelp: nodeText(statusHelp, lootMode), statusIcon,
+      check: nodeText(check, lootMode), checked, statusTitle: nodeText(statusTitle, lootMode), statusHelp, statusIcon,
       harvestSlots, harvestSlotGroups,
       progressLabel: nodeText(`${data.remaining ?? "Unlimited"} harvests remaining; ${data.harvests} successful; ${data.failures} failed.`, lootMode),
       cardOutcome: failed ? "failure" : data.status === "depleted" ? "success" : "",
@@ -481,7 +508,7 @@ class HarvestWindow extends HarvestConfig {
     }
     this.element.querySelector("[data-harvester]")?.addEventListener("change", event => {
       this.actorUuid = event.target.value;
-      this.render();
+      this.render().catch(report);
     });
   }
 
@@ -522,8 +549,8 @@ class HarvestWindow extends HarvestConfig {
     if (!game.user.isGM || this.managing) return;
     this.refreshRevision = (this.refreshRevision ?? 0) + 1;
     this.managing = true;
-    await this.render();
     try {
+      await this.render();
       this.data = await request("unlock", this.token);
       this.result = null;
     } catch (error) {
@@ -540,9 +567,9 @@ class HarvestWindow extends HarvestConfig {
     this.pending = true;
     this.phase = this.data.mode === "free" ? "collecting" : "rolling";
     this.result = null;
-    this.render();
     let lease;
     try {
+      await this.render();
       const actorUuid = this.actorUuid;
       lease = await request("begin", this.token, { actorUuid });
       const document = await fromUuid(actorUuid);
@@ -595,8 +622,9 @@ class HarvestWindow extends HarvestConfig {
 }
 
 export async function openHarvest(token) {
+  if (!token?.uuid) return report(new Error("This harvest is no longer available."));
   const existing = playerWindows.get(token.uuid);
-  if (existing) return existing.render({ force: true, focus: true });
+  if (existing) return existing.render({ force: true, focus: true }).catch(report);
   try {
     const data = await request("view", token);
     if (playerWindows.has(token.uuid)) return;
@@ -612,7 +640,7 @@ export async function openHarvest(token) {
 export async function openConfig(subject) {
   if (!canConfigure(subject)) return;
   const existing = configWindows.get(subject.uuid);
-  if (existing) return existing.render({ force: true, focus: true });
+  if (existing) return existing.render({ force: true, focus: true }).catch(report);
   try {
     const data = game.user.isGM ? await readHarvest(subject) : await request("configuration", subject);
     if (configWindows.has(subject.uuid)) return;

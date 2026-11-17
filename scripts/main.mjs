@@ -1,5 +1,7 @@
+import { registerPresentationSettings } from "./settings.mjs";
+import { expandRewardCard } from "./rewards.mjs";
 import { ID } from "./rules.mjs";
-import { DEFAULT_RECIPE, cleanDeletedHarvest, isHarvest, isDefeated, canInteractHarvest, requiresDefeat, usesLootWording } from "./store.mjs";
+import { DEFAULT_RECIPE, cleanDeletedHarvest, isHarvest, canInteractHarvest, usesLootWording } from "./store.mjs";
 import { nodeText } from "./wording.mjs";
 import { initializeNameplates } from "./nameplates.mjs";
 import { initializeAuthority } from "./authority.mjs";
@@ -40,6 +42,7 @@ function harvestHeaderControl(app, controls) {
 
 Hooks.once("init", () => {
   if (game.system.id !== "dnd5e") return;
+  registerPresentationSettings(() => refreshInteractions());
   Handlebars.registerHelper("harvestText", (text, lootMode) => nodeText(text, lootMode === true));
   game.settings.registerMenu(ID, "configureDefaults", {
     name: "Harvest Defaults",
@@ -86,18 +89,15 @@ Hooks.once("setup", () => {
   if (game.system.id !== "dnd5e") return;
   initializeAppearance(refreshHarvest);
   initializeNameplates();
+  Hooks.on("renderChatMessageHTML", expandRewardCard);
   libWrapper.register(ID, "CONFIG.Token.objectClass.prototype._canView", function (wrapped, user, event) {
-    if (!user.isGM && isHarvest(this.document) && requiresDefeat(this.document) && !isDefeated(this.document)) return false;
+    if (!canInteractHarvest(this.document)) return wrapped(user, event);
     if (!user.isGM && canInteractHarvest(this.document) && !this.document.hidden && !this.document.isSecret && this.isVisible && this.layer.active
       && !canvas.regions._placementContext && !this.layer._draggedToken && !canvas.controls.ruler.active
       && !(CONFIG.Canvas.rulerClass.canMeasure && event?.type === "pointerdown")) return true;
     return wrapped(user, event);
   }, "MIXED");
   libWrapper.register(ID, "CONFIG.Token.objectClass.prototype._onClickLeft2", function (wrapped, event, ...args) {
-    if (!game.user.isGM && isHarvest(this.document) && requiresDefeat(this.document) && !isDefeated(this.document)) {
-      event.stopPropagation();
-      return;
-    }
     if (!canInteractHarvest(this.document) || (game.user.isGM && event.altKey)) return wrapped(event, ...args);
     event.stopPropagation();
     return openHarvest(this.document);
@@ -144,7 +144,7 @@ Hooks.once("setup", () => {
   });
   Hooks.on("canvasTearDown", canvas => canvas.scene?.tokens.forEach(token => closeHarvest(token.uuid)));
   game.modules.get(ID).api = {
-    open: token => openHarvest(token.document ?? token),
-    configure: subject => openConfig(subject.document ?? subject)
+    open: token => openHarvest(token?.document ?? token),
+    configure: subject => openConfig(subject?.document ?? subject)
   };
 });

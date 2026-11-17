@@ -1,5 +1,16 @@
 export const ID = "harvester-scavenger";
 
+export class RuleValidationError extends Error {}
+
+function requireRule(condition, message) {
+  if (!condition) throw new RuleValidationError(message);
+}
+
+const plainObject = value => value !== null && typeof value === "object"
+  && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+const integer = (value, min, max) => Number.isSafeInteger(value) && value >= min && value <= max;
+const reference = value => typeof value === "string" && value.length <= 2048 && /^[\w.-]+$/.test(value);
+
 const rewardDefaults = () => ({ items: [], tables: [] });
 
 export function defaultRules() {
@@ -36,6 +47,83 @@ export function normalizeRules(data = {}) {
   delete rules.failureLimit;
   delete rules.lockOnFailure;
   return rules;
+}
+
+/** Validate at the authority/storage boundary; UI constraints alone are not authoritative. */
+export function validateRules(data) {
+  requireRule(plainObject(data), "The harvest settings must be an object.");
+  const normalized = normalizeRules(data);
+  const rules = Object.fromEntries(Object.keys(defaultRules()).map(key => [key, normalized[key]]));
+  for (const key of ["name", "description", "skill", "ability", "tool"]) {
+    requireRule(typeof rules[key] === "string" && rules[key].length <= (key === "description" ? 100000 : 120),
+      `The harvest ${key} is invalid or too long.`);
+  }
+  for (const key of ["defeatedOnly", "lootMode", "revealItems", "revealTables"]) {
+    requireRule(typeof rules[key] === "boolean", `The harvest ${key} setting must be true or false.`);
+  }
+  for (const [key, choices] of Object.entries({
+    mode: ["skill", "ability", "tool", "free"], critical: ["world", "yes", "no", "reward"],
+    naturalOne: ["world", "none", "fail", "lock", "reward"], macroClient: ["gm", "player"]
+  })) requireRule(choices.includes(rules[key]), `The harvest ${key} setting is invalid.`);
+  const checkConfig = globalThis.CONFIG?.DND5E?.[{ skill: "skills", ability: "abilities", tool: "tools" }[rules.mode]];
+  if (checkConfig) requireRule(Object.hasOwn(checkConfig, rules[{ skill: "skill", ability: "ability", tool: "tool" }[rules.mode]]),
+    "The selected harvest check is not available in this system.");
+  requireRule(integer(rules.dc, 1, 99), "Difficulty Class must be a whole number from 1 to 99.");
+  requireRule(integer(rules.harvestLimit, 0, 999), "Available harvests must be a whole number from 0 to 999.");
+  requireRule(rules.distance === null || (Number.isFinite(rules.distance) && rules.distance >= 0),
+    "Interaction distance must be empty or a nonnegative number.");
+  requireRule(rules.macro === null || reference(rules.macro), "The reward macro reference is invalid.");
+  requireRule(Array.isArray(rules.thresholds) && rules.thresholds.length <= 20, "Use at most 20 reward thresholds.");
+  let references = 0;
+  const source = (value, label) => {
+    requireRule(plainObject(value), `${label} must contain item and table lists.`);
+    const result = {};
+    for (const field of ["items", "tables"]) {
+      requireRule(Array.isArray(value[field]) && value[field].length <= 100, `${label}: use at most 100 ${field}.`);
+      references += value[field].length;
+      result[field] = value[field].map(entry => {
+        requireRule(plainObject(entry) && reference(entry.uuid), `${label} contains an invalid reward reference.`);
+        const randomQuantity = field === "items" && entry.randomQuantity === true;
+        requireRule(entry.randomQuantity === undefined || typeof entry.randomQuantity === "boolean",
+          `${label} contains an invalid quantity mode.`);
+        requireRule(field === "items" || !entry.randomQuantity, "Roll tables must use a fixed number of draws.");
+        // Fixed quantity is retained when switching an item to a random range.
+        requireRule(integer(entry.quantity, 1, field === "tables" ? 20 : 999),
+          `${label}: quantities must be whole numbers from 1 to ${field === "tables" ? 20 : 999}.`);
+        const result = { uuid: entry.uuid, quantity: entry.quantity };
+        if (field === "items") {
+          result.randomQuantity = randomQuantity;
+          const validRange = integer(entry.minQuantity, 0, 999) && integer(entry.maxQuantity, 0, 999)
+            && entry.minQuantity <= entry.maxQuantity;
+          if (randomQuantity) requireRule(validRange,
+            `${label}: each item range must use whole numbers from 0 to 999, with Min no greater than Max.`);
+          if (validRange) {
+            result.minQuantity = entry.minQuantity;
+            result.maxQuantity = entry.maxQuantity;
+          }
+        }
+        return result;
+      });
+    }
+    return result;
+  };
+  for (const key of ["base", "mishap", "criticalRewards"]) rules[key] = source(rules[key], key);
+  rules.thresholds = rules.thresholds.map(tier => {
+    requireRule(plainObject(tier) && integer(tier.above, -99, 999) && typeof tier.double === "boolean",
+      "Each threshold needs a whole-number total from -99 to 999 and a valid doubling setting.");
+    return { above: tier.above, double: tier.double, ...source(tier, "Threshold") };
+  });
+  requireRule(references <= 500, "Use at most 500 reward references across all sections.");
+  return rules;
+}
+
+export function validateState(state) {
+  requireRule(plainObject(state) && integer(state.harvests, 0, Number.MAX_SAFE_INTEGER - 1)
+    && integer(state.failures, 0, Number.MAX_SAFE_INTEGER - 1)
+    && Number.isSafeInteger(state.harvests + state.failures) && typeof state.locked === "boolean"
+    && [undefined, null, "success", "critical", "mishap", "failure"].includes(state.lastOutcome),
+  "The saved harvest progress is invalid. Ask the GM to review or reset it.");
+  return { harvests: state.harvests, failures: state.failures, locked: state.locked, lastOutcome: state.lastOutcome ?? null };
 }
 
 export function defaultState() {

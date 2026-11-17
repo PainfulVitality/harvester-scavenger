@@ -16,7 +16,19 @@ function stackKey(data) {
     system, effects: data.effects ?? [], flags: data.flags ?? {} }));
 }
 
+export function validateDelivery(rewards) {
+  if (!Array.isArray(rewards) || rewards.length > 500) throw new Error("Use at most 500 distinct item rewards per attempt.");
+  let documents = 0;
+  for (const { item, quantity } of rewards) {
+    if (!item || !Number.isSafeInteger(quantity) || quantity < 1) throw new Error("Invalid inventory reward quantity.");
+    if (!Number.isFinite(item.system?.quantity) || (item.type ?? item.toObject?.().type) === "container") documents += quantity;
+    else documents++;
+    if (documents > 500) throw new Error("A harvest attempt cannot create more than 500 inventory documents.");
+  }
+}
+
 export async function grantInventory(rewards, actor, interactionId) {
+  validateDelivery(rewards);
   if (!rewards.length) return [];
   const stacks = new Map();
   for (const item of actor.items) {

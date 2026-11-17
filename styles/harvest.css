@@ -190,7 +190,7 @@ body.theme-dark :is(.harvest-window, .harvest-receipt):not(.theme-light) {
 .harvest-window select option { background: var(--harvest-card); color: var(--harvest-text); }
 .harvest-window :is(input[type="checkbox"],input[type="radio"]) { appearance: auto; position: static; width: 16px; height: 16px; min-width: 16px; min-height: 16px; margin: 0; padding: 0; border: 0; box-shadow: none; accent-color: var(--harvest-gold); }
 .harvest-window :is(input[type="checkbox"],input[type="radio"])::before,
-.harvest-window :is(input[type="checkbox"],input[type="radio"])::after { content: none; }
+.harvest-window :is(input[type="checkbox"],input[type="radio"])::after { display: none !important; content: none !important; }
 
 .harvest-window nav.harvest-tab-rail {
   position: absolute;
@@ -623,4 +623,49 @@ body.theme-dark .harvest-receipt[data-outcome="failure"]::before { background: r
 @container harvest-player (max-width: 360px) {
   .harvest-player .harvest-recipient { flex-wrap: wrap; }
   .harvest-player .harvest-recipient > select { flex: 1; }
+}
+
+/* Give reward names their own line and keep quantity controls together. */
+.harvest-config .harvest-content { container: harvest-config / inline-size; }
+.harvest-window .harvest-list .harvest-reward-row {
+  display: grid;
+  grid-template-columns: 23px minmax(0, 1fr) 29px;
+  gap: 7px 8px;
+  padding: 8px;
+}
+.harvest-reward-row > img { grid-column: 1; grid-row: 1; }
+.harvest-reward-row > span { grid-column: 2; grid-row: 1; }
+.harvest-reward-row > .harvest-icon { grid-column: 3; grid-row: 1; align-self: start; }
+.harvest-reward-row .harvest-quantity-controls {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.harvest-quantity-controls label { display: inline-flex; align-items: center; gap: 5px; margin: 0; font-size: 12px; }
+.harvest-quantity-controls label > span { color: var(--harvest-muted); }
+.harvest-quantity-controls select { width: 128px; height: 30px; }
+.harvest-window .harvest-quantity-controls input { width: 56px; height: 30px; }
+.harvest-window .harvest-list .harvest-quantity-help { margin: 6px 0; font-size: 11px; line-height: 1.45; }
+.harvest-config .harvest-thresholds > header h3 { margin: 0; }
+.harvest-config .harvest-thresholds > .hint { margin-top: 6px; }
+.harvest-window .harvest-list summary { overflow-wrap: anywhere; }
+.harvest-window .harvest-list li > img { flex-shrink: 0; }
+.harvest-receipt li { box-sizing: border-box; }
+.harvest-receipt li > img { flex: 0 0 20px; width: 20px; height: 20px; }
+.harvest-receipt li > :is(label,.content-link) { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.harvest-receipt li > small { flex-shrink: 0; margin-inline-start: auto; }
+@container harvest-config (max-width: 380px) {
+  .harvest-config .harvest-field { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .harvest-config .harvest-field:has(> input[type="checkbox"]) { grid-template-columns: minmax(0, 1fr) 20px; }
+  .harvest-config .harvest-quantity-mode { flex-basis: 100%; }
+}
+
+.harvest-window .harvest-share-reward {
+  flex: 0 0 28px;
+  width: 28px;
+  min-width: 28px;
+  padding: 4px;
+  color: var(--harvest-gold);
 }

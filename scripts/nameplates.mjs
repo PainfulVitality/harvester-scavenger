@@ -1,7 +1,7 @@
 import { getHarvestStatus } from "./appearance.mjs";
 import { isHarvest, usesLootWording } from "./store.mjs";
 import { ID } from "./rules.mjs";
-import { nodeText } from "./wording.mjs";
+import { statusNameplateText } from "./settings.mjs";
 
 const plateId = `${ID}-status`;
 const managed = new WeakSet();
@@ -49,9 +49,9 @@ function registerIntegration() {
     const primary = config.nameplates.find(entry => /\{(?:name|actor\.name)\}/.test(entry.value ?? ""))
       ?? bottom.toSorted((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))[0];
     const baseStyle = bottom[0]?.style ?? {};
-    const text = status === "depleted" ? "Harvested" : status === "locked" ? "Fumbled" : "Harvestable";
+    const text = statusNameplateText(status, usesLootWording(this.document));
     const fill = status === "depleted" ? "#9297a3" : status === "locked" ? "#e38b95" : "#d6e6da";
-    config.nameplates.push({ ...plate(nodeText(text, usesLootWording(this.document)), "bottom", sort,
+    config.nameplates.push({ ...plate(text, "bottom", sort,
       { fontFamily: baseStyle.fontFamily ?? CONFIG.canvasTextStyle.fontFamily, fontSize: 14,
         fill, stroke: "#202328", strokeThickness: 2, align: "center" }), id: plateId, display: primary?.display ?? "default" });
     return config;
@@ -60,6 +60,7 @@ function registerIntegration() {
 }
 
 export function initializeNameplates() {
+  if (!game.modules.get("token-nameplates")?.active) return;
   Hooks.on("canvasConfig", registerIntegration);
   Hooks.once("ready", registerIntegration);
 }

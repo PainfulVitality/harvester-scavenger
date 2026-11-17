@@ -29,6 +29,8 @@ def build():
         files.extend(path for path in (ROOT / folder).rglob("*") if path.is_file())
     for path in files:
         assert not path.is_symlink(), f"Unexpected symlink: {path}"
+        assert not any(part.startswith(".") for part in path.relative_to(ROOT).parts), f"Hidden release file: {path}"
+        assert path.suffix in {".json", ".md", ".mjs", ".css", ".hbs", ".mp3", ".png", ".webp", ".svg", ".ogg", ".wav"} or path.name == "LICENSE", f"Unexpected release file: {path}"
         if path.suffix == ".mjs":
             for imported in re.findall(r'''from\s+["'](\.[^"']+)["']''', path.read_text()):
                 assert (path.parent / imported).is_file(), f"Missing import: {imported}"

@@ -1,8 +1,8 @@
 import { matchingTool, checkKey } from "./tools.mjs";
-import { ID, availability, defaultState, evaluateHarvest, remainingHarvests } from "./rules.mjs";
-import { isHarvest, isDefeated, usesLootWording, readHarvest, removeHarvest, saveRules, writeState } from "./store.mjs";
+import { ID, RuleValidationError, validateRules, availability, evaluateHarvest, remainingHarvests } from "./rules.mjs";
+import { isHarvest, isDefeated, usesLootWording, readHarvest, removeHarvest, saveRules, writeState, resetProgress } from "./store.mjs";
 import { nodeText } from "./wording.mjs";
-import { collectRewards, deliverRewards, lookup, postReceipt, rewardPreview, revealedItem } from "./rewards.mjs";
+import { collectRewards, deliverRewards, lookup, postReceipt, postRewardCard, rewardPreview, revealedItem, rewardSnapshot } from "./rewards.mjs";
 import { canConfigure, distanceWarning, gridDistance, inRange, interactionDistance } from "./interaction.mjs";
 
 const leases = new Map();
@@ -45,7 +45,7 @@ async function resolveTarget(uuid, user) {
 }
 
 async function resolveHarvester(uuid, user, target, distance = Infinity) {
-  const document = await fromUuid(uuid);
+  const document = await lookup(uuid, "Token") ?? await lookup(uuid, "Actor");
   let token = document?.documentName === "Token" ? document : null;
   const actor = token?.actor ?? (document?.documentName === "Actor" && !document.pack ? document : null);
   requireCondition(actor?.testUserPermission(user, "OWNER")
@@ -120,8 +120,9 @@ async function begin(token, user, { actorUuid }) {
 function readRoll(messageId, user, lease, harvester, rules) {
   const message = game.messages.get(messageId);
   const mark = message?.getFlag(ID, "check");
-  const roll = message?.rolls[0];
-  const kept = roll?.d20?.results.find(result => result.active && !result.discarded)?.result;
+  const roll = message?.rolls?.[0];
+  const kept = Array.isArray(roll?.d20?.results)
+    ? roll.d20.results.find(result => result.active && !result.discarded)?.result : undefined;
   requireCondition(message?.author?.id === user.id && message.type === "check"
     && mark?.nonce === lease.nonce && mark?.actorUuid === harvester.actor.uuid
     && message.speaker?.actor === harvester.actor.id
@@ -233,8 +234,8 @@ async function configuration(action, uuid, data, user) {
     "Only the owner or a GM can configure this harvest.");
   const current = await readHarvest(subject);
   if (action === "configuration.save") {
-    const rules = foundry.utils.deepClone(data.rules);
-    requireCondition(foundry.utils.isPlainObject(rules), "The harvest settings are invalid.");
+    const rules = validateRules(data.rules);
+    requireCondition(typeof data.enabled === "boolean", "The harvest enabled setting must be true or false.");
     if (!user.isGM) {
       rules.macro = current.rules.macro;
       rules.macroClient = current.rules.macroClient;
@@ -268,6 +269,10 @@ async function handle(action, uuid, data, user) {
   let lootMode = false;
   try {
     requireCondition(game.users.activeGM?.isSelf && user?.active, "An active GM is required to harvest.");
+    requireCondition(["configuration", "configuration.save", "appearance", "view", "inspect", "shareReward", "unlock", "begin", "cancel", "finish"].includes(action),
+      "This harvest action is not supported.");
+    requireCondition(data !== null && typeof data === "object" && !Array.isArray(data), "The harvest request is invalid.");
+    requireCondition(typeof uuid === "string" && uuid.length <= 2048 && /^[\w.-]+$/.test(uuid), "The harvest reference is invalid.");
     if (action === "configuration" || action === "configuration.save") {
       return { ok: true, value: await configuration(action, uuid, data, user) };
     }
@@ -278,13 +283,17 @@ async function handle(action, uuid, data, user) {
       return { ok: true, value: nodeStatus(rules, state, token) };
     }
     if (action === "view") return { ok: true, value: await view(token, user) };
-    if (action === "inspect") {
+    if (action === "inspect" || action === "shareReward") {
       await view(token, user); // Apply the same scene, visibility and distance checks as the open window.
       const { rules } = await readHarvest(token);
       requireDefeated(rules, token);
       const item = await revealedItem(rules, data.reference);
       requireCondition(item, "This reward is not available for inspection.");
-      return { ok: true, value: { uuid: item.uuid, item: item.toObject() } };
+      if (action === "shareReward") {
+        const message = await postRewardCard(item, user);
+        return { ok: true, value: message?.id ?? null };
+      }
+      return { ok: true, value: { uuid: item.uuid, item: rewardSnapshot(item) } };
     }
     if (action === "unlock") {
       requireCondition(user.isGM, "Only a GM can unlock a harvest.");
@@ -312,8 +321,9 @@ async function handle(action, uuid, data, user) {
     });
     return { ok: true, value };
   } catch (error) {
-    if (!(error instanceof HarvestError)) console.error(`${ID} | Harvest request failed`, error);
-    return { ok: false, message: nodeText(error instanceof HarvestError ? error.message
+    const expected = error instanceof HarvestError || error instanceof RuleValidationError;
+    if (!expected) console.error(`${ID} | Harvest request failed`, error);
+    return { ok: false, message: nodeText(expected ? error.message
       : "The harvest could not be completed. Ask the GM to check the console.", lootMode) };
   }
 }
@@ -363,21 +373,30 @@ async function broadcast(uuid) {
 export async function request(action, token, data = {}) {
   const gm = game.users.activeGM;
   if (!gm) throw new HarvestError("An active GM is required to harvest.");
-  const response = gm.isSelf
-    ? await handle(action, token.uuid, data, game.user)
-    : await socket.executeAsUser("request", gm.id, action, token.uuid, data);
-  if (!response.ok) throw new HarvestError(response.message);
+  if (!gm.isSelf && !socket) throw new HarvestError("The harvest service is still starting. Please try again shortly.");
+  if (!token?.uuid) throw new HarvestError("This harvest is no longer available.");
+  let response;
+  try {
+    response = gm.isSelf
+      ? await handle(action, token.uuid, data, game.user)
+      : await socket.executeAsUser("request", gm.id, action, token.uuid, data);
+  } catch {
+    throw new HarvestError("The harvest service could not be reached. Please try again.");
+  }
+  if (!response?.ok) throw new HarvestError(response?.message ?? "The harvest service did not respond. Please try again.");
   return response.value;
 }
 
 export async function configureNode(token, action, rules, options) {
   requireCondition(game.user.isGM, "Only a GM can configure a harvest.");
+  requireCondition(["save", "remove", "reset", "unlock"].includes(action), "This configuration action is not supported.");
   await runExclusive(token.uuid, async () => {
     if (action === "save") await saveRules(token, rules, options);
     else if (action === "remove") await removeHarvest(token);
+    else if (action === "reset") await resetProgress(token);
     else {
       const { state, stateRecord } = await readHarvest(token);
-      const next = action === "reset" ? defaultState() : { ...state, failures: 0, locked: false, lastOutcome: null };
+      const next = { ...state, failures: 0, locked: false, lastOutcome: null };
       await writeState(token, next, stateRecord);
     }
     leases.delete(token.uuid);

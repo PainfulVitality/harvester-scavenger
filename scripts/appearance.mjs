@@ -1,3 +1,4 @@
+import { refreshStatusNameplate } from "./settings.mjs";
 import { request } from "./authority.mjs";
 import { ID } from "./rules.mjs";
 import { isHarvest, canInteractHarvest } from "./store.mjs";
@@ -14,7 +15,8 @@ export function getHarvestStatus(document) {
 
 function applyAppearance(token) {
   if (!token?.mesh || token.destroyed) return;
-  const enabled = isHarvest(token.document);
+  const configured = isHarvest(token.document);
+  const enabled = configured && canInteractHarvest(token.document);
   if (!enabled && !originalBorders.has(token)) return;
 
   const status = getHarvestStatus(token.document);
@@ -28,7 +30,7 @@ function applyAppearance(token) {
   } else {
     token.border.renderable = originalBorders.get(token);
     originalBorders.delete(token);
-    statuses.delete(token.document.uuid);
+    if (!configured) statuses.delete(token.document.uuid);
   }
 }
 
@@ -38,7 +40,7 @@ export function setHarvestAppearance(uuid, status) {
   else statuses.delete(uuid);
   const token = fromUuidSync(uuid)?.object;
   if (!token || token.destroyed) return;
-  token.refreshNameplates?.(true);
+  refreshStatusNameplate(token);
   token.renderFlags.set({ refreshMesh: true, refreshState: true });
 }
 

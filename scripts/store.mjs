@@ -1,4 +1,4 @@
-import { ID, defaultRules, defaultState, normalizeRules } from "./rules.mjs";
+import { ID, defaultRules, defaultState, validateRules, validateState } from "./rules.mjs";
 
 const PACK_NAME = "harvester-scavenger-data";
 const PACK_ID = `world.${PACK_NAME}`;
@@ -79,7 +79,7 @@ export async function readHarvest(subject = null) {
   ]);
   const rules = recipe?.getFlag(ID, "rules");
   if (!rules) throw new Error("The saved harvest configuration is missing.");
-  return { rules: normalizeRules(rules), state: stateRecord?.getFlag(ID, "state") ?? defaultState(), stateRecord, recipe: id,
+  return { rules: validateRules(rules), state: validateState(stateRecord?.getFlag(ID, "state") ?? defaultState()), stateRecord, recipe: id,
     enabled: isHarvest(subject) };
 }
 
@@ -96,7 +96,7 @@ async function setRecipeId(subject, id, enabled, rules = {}) {
 }
 
 export async function saveRules(subject, rules, { enabled = true } = {}) {
-  rules = normalizeRules(rules);
+  rules = validateRules(rules);
   const pack = await getPack(true);
   const oldRecipe = getRecipeId(subject);
   const recipe = await createRecord(pack, subject ? rules.name || subject.name : "World Harvest Defaults", { rules });
@@ -143,15 +143,24 @@ async function cleanHarvestRecords(subject, id) {
 }
 
 export async function writeState(token, state, record) {
+  state = validateState(state);
   if (!record) {
     await createRecord(await getPack(true), token.uuid, { state });
     return;
   }
   // Foundry returns no document for an unchanged update; repeated Reset/Unlock is valid.
-  if (foundry.utils.isEmpty(foundry.utils.diffObject(record.getFlag(ID, "state"), state))) return;
+  const previous = record.getFlag(ID, "state");
+  if (previous && typeof previous === "object" && !Array.isArray(previous)
+    && foundry.utils.isEmpty(foundry.utils.diffObject(previous, state))) return;
   // Foundry 14 tries to update uncached compendium documents before loading them on other clients.
   // Public window/appearance updates use our authenticated socket channel instead.
   if (!await record.update({ flags: { [ID]: { state } } }, { broadcast: false })) {
     throw new Error("Could not update the harvest state.");
   }
+}
+
+/** A GM's explicit reset can repair corrupt progress without trusting that progress. */
+export async function resetProgress(token) {
+  const pack = await getPack(true);
+  await writeState(token, defaultState(), await findState(pack, token));
 }
