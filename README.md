@@ -16,10 +16,10 @@ https://github.com/PainfulVitality/harvester-scavenger/releases/latest/download/
 
 Right-click an actor and pick **Configure Harvest Template**, or use a token's **Harvest Settings**. Turn it on, pick a check and add rewards. Double-click the token to harvest or loot.
 
-Item quantities can be fixed or random. Revealed items can be previewed and posted in chat, even if players don't own the source actor.
+Items and currency can have fixed or random amounts. Currency uses the system’s current denominations, names and decimal precision. Revealed items can be previewed and posted in chat, even if players don't own the source actor.
 
 The 0 HP option keeps normal sheet access until the creature is defeated. The GM's right-click settings icon stays available.
 
-World settings let you change the success/failure text. [Token Nameplates](https://foundryvtt.com/packages/token-nameplates) is optional and has separate Harvest/Loot labels.
+World settings let you change the success/failure text and turn off DC colors. [Token Nameplates](https://foundryvtt.com/packages/token-nameplates) is optional and has separate Harvest/Loot labels.
 
 Code: [MIT](LICENSE). Sounds: [CC0 from Freesound.org](assets/LICENSE.md).

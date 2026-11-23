@@ -1,3 +1,4 @@
+import { CurrencyError, collectCurrency, prepareCurrency, grantCurrency } from "./currency.mjs";
 import { matchingTool, checkKey } from "./tools.mjs";
 import { ID, RuleValidationError, validateRules, availability, evaluateHarvest, remainingHarvests } from "./rules.mjs";
 import { isHarvest, isDefeated, usesLootWording, readHarvest, removeHarvest, saveRules, writeState, resetProgress } from "./store.mjs";
@@ -75,6 +76,10 @@ function summary(rules, state, token) {
     name: rules.name || token.name,
     img: token.actor?.img ?? token.texture.src,
     mode: rules.mode, key: checkKey(rules), dc: rules.dc,
+    chanceRules: {
+      naturalOne: rules.naturalOne === "world" ? game.settings.get(ID, "automaticFailure") ? "lock" : "none" : rules.naturalOne,
+      alternateTwenty: rules.critical === "reward"
+    },
     status: nodeStatus(rules, state, token), defeatedOnly: Boolean(rules.defeatedOnly), lootMode: Boolean(rules.lootMode), harvestLimit: rules.harvestLimit, harvests: state.harvests,
     failures: state.failures, remaining: Number.isFinite(remaining) ? remaining : null,
     lastOutcome: state.lastOutcome ?? (state.failures ? "failure" : null),
@@ -166,6 +171,7 @@ async function finish(token, user, lease, messageId) {
   const result = evaluateHarvest(rules, state, roll, game.settings.get(ID, "doubleCritical"),
     game.settings.get(ID, "automaticFailure"));
   let rewards = [];
+  let currencyRewards = [];
   let macro;
   if (result.success) {
     try {
@@ -179,8 +185,11 @@ async function finish(token, user, lease, messageId) {
         }
       }
       rewards = await collectRewards(result.sources, result.multiplier);
+      currencyRewards = await collectCurrency(result.sources, result.multiplier, harvester.actor);
+      prepareCurrency(harvester.actor, currencyRewards);
     } catch (error) {
       if (error instanceof HarvestError) throw error;
+      if (error instanceof CurrencyError) throw new HarvestError(error.message);
       console.error(`${ID} | Could not prepare rewards for ${token.name}`, error);
       ui.notifications.error(`Could not prepare harvest rewards for ${token.name}. See the console for details.`);
       throw new HarvestError("The GM needs to check this harvest’s rewards.");
@@ -189,11 +198,15 @@ async function finish(token, user, lease, messageId) {
 
   await writeState(token, result.next, stateRecord);
   let items = [];
+  let currency = [];
   let effectOccurred = false;
   let warning;
   try {
-    items = await runExclusive(`inventory:${harvester.actor.uuid}`, () =>
-      deliverRewards(rewards, harvester.actor, lease.nonce));
+    await runExclusive(`inventory:${harvester.actor.uuid}`, async () => {
+      prepareCurrency(harvester.actor, currencyRewards);
+      items = await deliverRewards(rewards, harvester.actor, lease.nonce);
+      currency = await grantCurrency(harvester.actor, currencyRewards, lease.nonce);
+    });
     if (macro) {
       const outcome = { outcome: result.outcome, total: result.total, natural: result.natural };
       if (rules.macroClient === "player" && !user.isSelf) {
@@ -216,7 +229,7 @@ async function finish(token, user, lease, messageId) {
 
   try {
     await postReceipt(token, rules.name || token.name, harvester.actor, harvester.token, result.outcome, items,
-      effectOccurred, user, roll?.message, rules.lootMode);
+      effectOccurred, user, roll?.message, rules.lootMode, currency);
   } catch (error) {
     console.error(`${ID} | Could not post the harvest receipt`, error);
     warning = "Harvest recorded. The chat receipt could not be posted.";
@@ -321,7 +334,7 @@ async function handle(action, uuid, data, user) {
     });
     return { ok: true, value };
   } catch (error) {
-    const expected = error instanceof HarvestError || error instanceof RuleValidationError;
+    const expected = error instanceof HarvestError || error instanceof RuleValidationError || error instanceof CurrencyError;
     if (!expected) console.error(`${ID} | Harvest request failed`, error);
     return { ok: false, message: nodeText(expected ? error.message
       : "The harvest could not be completed. Ask the GM to check the console.", lootMode) };

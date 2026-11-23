@@ -1,3 +1,4 @@
+import { validateCurrencyEntries } from "./currency.mjs";
 export const ID = "harvester-scavenger";
 
 export class RuleValidationError extends Error {}
@@ -11,7 +12,7 @@ const plainObject = value => value !== null && typeof value === "object"
 const integer = (value, min, max) => Number.isSafeInteger(value) && value >= min && value <= max;
 const reference = value => typeof value === "string" && value.length <= 2048 && /^[\w.-]+$/.test(value);
 
-const rewardDefaults = () => ({ items: [], tables: [] });
+const rewardDefaults = () => ({ items: [], tables: [], currency: [] });
 
 export function defaultRules() {
   return {
@@ -28,6 +29,7 @@ export function defaultRules() {
     harvestLimit: 1,
     revealItems: false,
     revealTables: false,
+    revealCurrency: false,
     critical: "world",
     naturalOne: "world",
     base: rewardDefaults(),
@@ -44,6 +46,11 @@ export function normalizeRules(data = {}) {
   // Preserve existing nodes from releases where defeated-only also selected Loot wording.
   if (!Object.hasOwn(data, "lootMode")) rules.lootMode = Boolean(data.defeatedOnly);
   if (rules.naturalOne === "normal") rules.naturalOne = "world";
+  for (const key of ["base", "mishap", "criticalRewards"]) {
+    if (plainObject(rules[key])) rules[key] = { ...rules[key], currency: Object.hasOwn(rules[key], "currency") ? rules[key].currency : [] };
+  }
+  if (Array.isArray(rules.thresholds)) rules.thresholds = rules.thresholds.map(tier => plainObject(tier)
+    ? { ...tier, currency: Object.hasOwn(tier, "currency") ? tier.currency : [] } : tier);
   delete rules.failureLimit;
   delete rules.lockOnFailure;
   return rules;
@@ -58,7 +65,7 @@ export function validateRules(data) {
     requireRule(typeof rules[key] === "string" && rules[key].length <= (key === "description" ? 100000 : 120),
       `The harvest ${key} is invalid or too long.`);
   }
-  for (const key of ["defeatedOnly", "lootMode", "revealItems", "revealTables"]) {
+  for (const key of ["defeatedOnly", "lootMode", "revealItems", "revealTables", "revealCurrency"]) {
     requireRule(typeof rules[key] === "boolean", `The harvest ${key} setting must be true or false.`);
   }
   for (const [key, choices] of Object.entries({
@@ -105,6 +112,8 @@ export function validateRules(data) {
         return result;
       });
     }
+    result.currency = validateCurrencyEntries(value.currency === undefined ? [] : value.currency, label);
+    references += result.currency.length;
     return result;
   };
   for (const key of ["base", "mishap", "criticalRewards"]) rules[key] = source(rules[key], key);

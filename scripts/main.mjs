@@ -6,7 +6,7 @@ import { nodeText } from "./wording.mjs";
 import { initializeNameplates } from "./nameplates.mjs";
 import { initializeAuthority } from "./authority.mjs";
 import { initializeAppearance, setHarvestAppearance } from "./appearance.mjs";
-import { HarvestConfig, closeHarvest, openConfig, openHarvest, refreshHarvest, refreshInteractions } from "./windows.mjs";
+import { HarvestConfig, closeHarvest, openConfig, openHarvest, refreshHarvest, refreshInteractions, refreshSettings } from "./windows.mjs";
 
 function renderHarvestHUD(hud, html) {
   const token = hud.object?.document;
@@ -74,7 +74,7 @@ Hooks.once("init", () => {
   game.settings.register(ID, "automaticFailure", {
     name: "Fail All Remaining Harvests on a Natural 1",
     hint: "A natural 1 turns every remaining harvest into a failed harvest and locks the node. Each node can override this setting.",
-    scope: "world", config: true, type: Boolean, default: true
+    scope: "world", config: true, type: Boolean, default: true, onChange: () => refreshInteractions()
   });
 });
 
@@ -119,16 +119,17 @@ Hooks.once("setup", () => {
   Hooks.on("updateToken", (token, changes) => {
     if (changes.flags?.[ID] || changes.name !== undefined || changes.hidden !== undefined) refreshHarvest(token.uuid);
     if (changes.flags?.[ID] && canvas.hud?.token?.object?.document === token) canvas.hud.token.render({ force: true });
-    if (["x", "y", "width", "height", "hidden", "actorId", "actorLink"].some(key => Object.hasOwn(changes, key))) {
+    if (["x", "y", "width", "height", "hidden", "actorId", "actorLink", "delta"].some(key => Object.hasOwn(changes, key))) {
       refreshInteractions(token.parent.id);
     }
   });
   Hooks.on("deleteToken", token => {
     closeHarvest(token.uuid);
+    refreshInteractions(token.parent?.id);
     if (game.users.activeGM?.isSelf) cleanDeletedHarvest(token);
   });
   Hooks.on("updateActor", (actor, changes) => {
-    if (changes.system || changes.items) refreshInteractions();
+    if (changes.system || changes.items || changes.flags || changes.ownership || changes.name !== undefined || changes.img !== undefined) refreshInteractions();
     if (!changes.ownership) return;
     refreshHarvest(actor.uuid);
     for (const token of canvas?.scene?.tokens ?? []) {
@@ -138,7 +139,18 @@ Hooks.once("setup", () => {
   for (const hook of ["createItem", "updateItem", "deleteItem"]) {
     Hooks.on(hook, item => { if (item.parent?.documentName === "Actor") refreshInteractions(); });
   }
+  for (const hook of ["createActiveEffect", "updateActiveEffect", "deleteActiveEffect"]) {
+    Hooks.on(hook, effect => {
+      const parent = effect.parent;
+      if (parent?.documentName === "Actor" || parent?.parent?.documentName === "Actor") refreshInteractions();
+    });
+  }
+  for (const hook of ["updateWorldTime", "updateCombat", "updateCombatant"]) Hooks.on(hook, () => refreshInteractions());
+  Hooks.on("updateSetting", () => refreshSettings());
+  Hooks.on("createToken", token => refreshInteractions(token.parent?.id));
+  Hooks.on("createActor", () => refreshInteractions());
   Hooks.on("deleteActor", actor => {
+    refreshInteractions();
     closeHarvest(actor.uuid);
     if (game.users.activeGM?.isSelf) cleanDeletedHarvest(actor);
   });

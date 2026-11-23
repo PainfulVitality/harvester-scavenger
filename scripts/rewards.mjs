@@ -1,4 +1,5 @@
 import { ID } from "./rules.mjs";
+import { currencyRows } from "./currency.mjs";
 import { validateDelivery } from "./inventory.mjs";
 
 export async function lookup(uuid, type) {
@@ -19,8 +20,9 @@ export async function rewardPreview(rules) {
   const unknown = { unknown: true, name: "Unknown reward" };
   const hasItems = rules.base.items.length > 0;
   const hasTables = rules.base.tables.length > 0;
+  const hasCurrency = (rules.base.currency ?? []).some(entry => entry.randomQuantity ? entry.maxQuantity > 0 : entry.quantity > 0);
   const items = rules.revealItems ? await referenceRows(rules.base.items, "Item")
-    : hasItems || !hasTables ? [unknown] : [];
+    : hasItems || !hasTables && !hasCurrency ? [unknown] : [];
   const tables = rules.revealTables ? await Promise.all(rules.base.tables.map(async entry => {
     const table = await lookup(entry.uuid, "RollTable");
     if (!table) return null;
@@ -34,7 +36,9 @@ export async function rewardPreview(rules) {
   })) : hasTables ? [unknown] : [];
   return { items: items.map(({ name, img, quantityLabel, unknown, missing }, index) => ({ name, img, quantityLabel, unknown,
     previewKey: !unknown && !missing ? `item:${index}` : null })),
-    tables: tables.filter(Boolean) };
+    tables: tables.filter(Boolean),
+    currency: !hasCurrency ? [] : rules.revealCurrency ? currencyRows(rules.base.currency).filter(row => row.randomQuantity ? row.maxQuantity > 0 : row.quantity > 0)
+      : [{ unknown: true, name: "Unknown currency" }] };
 }
 
 export async function revealedItem(rules, key) {
@@ -128,7 +132,7 @@ export function rewardSnapshot(item) {
 
 export { grantInventory as deliverRewards } from "./inventory.mjs";
 
-export async function postReceipt(token, name, actor, actorToken, outcome, items, usedMacro, user, rollMessage, lootMode = false) {
+export async function postReceipt(token, name, actor, actorToken, outcome, items, usedMacro, user, rollMessage, lootMode = false, currency = []) {
   const verb = lootMode ? "loot" : "harvest";
   const past = lootMode ? "looted" : "harvested";
   const message = {
@@ -140,8 +144,8 @@ export async function postReceipt(token, name, actor, actorToken, outcome, items
   const content = await foundry.applications.handlebars.renderTemplate(
     `modules/${ID}/templates/receipt.hbs`, {
       source: { name, img: token.actor?.img ?? token.texture.src },
-      actor: { name: actor.name, img: actor.img }, message, items, effectOccurred: usedMacro, outcome,
-      empty: !items.length && !usedMacro && outcome !== "failure"
+      actor: { name: actor.name, img: actor.img }, message, items, currency, hasRewards: Boolean(items.length || currency.length), effectOccurred: usedMacro, outcome,
+      empty: !items.length && !currency.length && !usedMacro && outcome !== "failure"
     }
   );
   const privateRoll = rollMessage?.whisper?.length || rollMessage?.blind;

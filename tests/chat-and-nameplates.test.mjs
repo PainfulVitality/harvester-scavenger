@@ -69,7 +69,7 @@ test("authority allows revealed items and table items, and rejects concealed or 
   globalThis.foundry = { utils: { deepClone: structuredClone } };
   const pack = { getDocument: async () => ({ getFlag: () => rules }), getIndex: async () => [] };
   globalThis.game = { user: { isGM: true }, users: { activeGM: { isSelf: true }, get: () => player },
-    packs: { get: () => pack } };
+    packs: { get: () => pack }, settings: { get: () => true } };
   let handler;
   globalThis.socketlib = { registerModule: () => ({ register(name, callback) {
     if (name === "request") handler = callback;
@@ -173,7 +173,7 @@ for (const active of [false, true]) {
     globalThis.canvas = { tokens: { placeables: [{ refreshNameplates() { refreshed++; } }] } };
     const refresh = () => { refreshed++; };
     registerPresentationSettings(refresh);
-    assert.equal(settings.size, 8);
+    assert.equal(settings.size, 9);
     for (const setting of settings.values()) assert.equal(setting.scope, "world");
     assert.equal(settings.get("successMessage").config, true);
     assert.equal(settings.get("failureMessage").config, true);

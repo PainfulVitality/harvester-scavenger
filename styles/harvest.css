@@ -6,6 +6,10 @@
 @font-face { font-family: "Harvest Condensed"; src: url("../../../systems/dnd5e/fonts/roboto-condensed/RobotoCondensed-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Harvest Condensed"; src: url("../../../systems/dnd5e/fonts/roboto-condensed/RobotoCondensed-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
 
+@font-face { font-family: "Harvest Slab"; src: url("../../../systems/dnd5e/fonts/roboto-slab/RobotoSlab-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Harvest Slab"; src: url("../../../systems/dnd5e/fonts/roboto-slab/RobotoSlab-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Harvest Modesto"; src: url("../../../fonts/modesto-condensed/modesto-condensed-bold.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
 :is(.harvest-window, .harvest-receipt) {
   --harvest-font: "Harvest Roboto", sans-serif;
   --harvest-font-condensed: "Harvest Condensed", sans-serif;
@@ -22,6 +26,13 @@
   --harvest-chat-row: rgb(0 0 0 / 6%);
   --harvest-chat-accent: #755a2b;
   --harvest-item-row-hover: color-mix(in srgb, var(--harvest-row-hover) 65%, var(--harvest-card));
+  --dnd5e-font-modesto: "Harvest Modesto", serif;
+  --dnd5e-font-roboto-slab: "Harvest Slab", serif;
+  --dnd5e-font-roboto: var(--harvest-font);
+  --dnd5e-font-roboto-condensed: var(--harvest-font-condensed);
+  --crlngn-font-family: var(--harvest-font);
+  --crlngn-font-titles: var(--harvest-font);
+  --color-scrollbar: var(--harvest-gold);
   --font-primary: var(--harvest-font);
   --font-body: var(--harvest-font);
   --font-h1: var(--harvest-font);
@@ -37,6 +48,7 @@
   --color-warm-1: var(--harvest-gold);
   --color-warm-2: var(--harvest-gold);
   --color-warm-3: var(--harvest-gold);
+  --input-height: 32px;
   --input-background-color: var(--harvest-input);
   --input-text-color: var(--harvest-text);
   --input-placeholder-color: var(--harvest-muted);
@@ -669,3 +681,27 @@ body.theme-dark .harvest-receipt[data-outcome="failure"]::before { background: r
   padding: 4px;
   color: var(--harvest-gold);
 }
+
+/* Only tint the existing gold DC details; the crest face keeps its normal surface. */
+.harvest-player .harvest-dc[data-dc-tone="green"] { color: light-dark(#28713d, #8acb9b); }
+.harvest-player .harvest-dc[data-dc-tone="orange"] { color: light-dark(#a25310, #eaaa60); }
+.harvest-player .harvest-dc[data-dc-tone="red"] { color: light-dark(#aa2638, #ed8b99); }
+.harvest-player .harvest-dc[data-dc-tone]:not([data-dc-tone=""]) .harvest-dc-value { color: inherit; }
+
+.harvest-window > .window-header > .header-control[class*="fa-"] {
+  font-family: var(--_fa-family, var(--fa-style-family, "Font Awesome 7 Pro"));
+  font-weight: 900;
+}
+
+.harvest-window > .window-header,
+.harvest-window :is(button, a, input, select, textarea, i),
+.harvest-receipt i { text-shadow: none; }
+
+.harvest-config .harvest-currency-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+.harvest-config .harvest-currency-heading h3 { margin: 0; }
+.harvest-config .harvest-currency-choice { grid-column: 2; grid-row: 1; min-width: 0; }
+.harvest-config .harvest-currency-choice select { width: 100%; }
+.harvest-config .harvest-currency-row > i { grid-column: 1; grid-row: 1; color: var(--harvest-gold); text-align: center; }
+.harvest-window .harvest-currency .harvest-quantity-bound input { width: 92px; }
+.harvest-receipt > h4 { margin: 8px 0 4px; font-size: 12px; color: var(--harvest-gold); }
+.harvest-receipt li > i { flex: 0 0 20px; color: var(--harvest-chat-accent); text-align: center; }

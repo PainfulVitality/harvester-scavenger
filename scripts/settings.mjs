@@ -28,6 +28,11 @@ export function refreshStatusNameplate(token) {
 }
 
 export function registerPresentationSettings(onRefresh) {
+  game.settings.register(ID, "disableDCColors", {
+    name: "Turn off DC colors",
+    hint: "Keep the DC display gold instead of tinting it for the selected character’s estimated check difficulty.",
+    scope: "world", config: true, type: Boolean, default: false, onChange: onRefresh
+  });
   for (const [key, name, hint] of [
     ["successMessage", "Success Message", "Text shown in the harvest or loot window after a success, including when fully depleted. Leave empty to use the default message for each state."],
     ["failureMessage", "Failure Message", "Text shown in the harvest or loot window after a failure. Leave empty to use the default message."]

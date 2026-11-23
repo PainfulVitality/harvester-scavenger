@@ -35,6 +35,32 @@
     <div class="harvest-drop" data-drop="{{field}}" data-type="{{type}}"><i class="fa-solid fa-download" inert></i> Drop {{name}} here</div>
   </div>
   {{/each}}
+  {{#with currency}}
+  <section class="harvest-list harvest-currency">
+    <header class="harvest-currency-heading"><h3>Currency</h3><button type="button" data-action="addCurrency" data-field="{{field}}" {{#unless canAdd}}disabled{{/unless}}><i class="fa-solid fa-plus" inert></i> Add Currency</button></header>
+    {{#if rows.length}}
+    <ul>
+      {{#each rows}}
+      <li class="harvest-reward-row harvest-currency-row">
+        {{#if img}}<img src="{{img}}" alt="">{{else}}<i class="{{icon}}" aria-hidden="true"></i>{{/if}}
+        <label class="harvest-currency-choice"><select data-field="{{path}}.denomination" data-refresh aria-label="Currency denomination">{{> options choices}}</select></label>
+        <button type="button" class="harvest-icon" data-action="removeReference" data-field="{{../field}}" data-index="{{@index}}" aria-label="Remove {{name}}"><i class="fa-solid fa-trash" inert></i></button>
+        <div class="harvest-quantity-controls">
+          <label class="harvest-quantity-mode"><span>Amount</span><select data-random-quantity="{{path}}" data-refresh aria-label="Amount mode for {{name}}"><option value="fixed" {{#unless randomQuantity}}selected{{/unless}}>Fixed</option><option value="random" {{#if randomQuantity}}selected{{/if}}>Random range</option></select></label>
+          {{#if randomQuantity}}
+          <label class="harvest-quantity-bound"><span>Min</span><input type="number" data-field="{{path}}.minQuantity" value="{{minQuantity}}" min="0" step="{{step}}" aria-label="Minimum {{name}} amount" required></label>
+          <label class="harvest-quantity-bound"><span>Max</span><input type="number" data-field="{{path}}.maxQuantity" value="{{maxQuantity}}" min="0" step="{{step}}" aria-label="Maximum {{name}} amount" required></label>
+          {{else}}
+          <label class="harvest-quantity-bound"><span>Value</span><input type="number" data-field="{{path}}.quantity" value="{{quantity}}" min="0" step="{{step}}" aria-label="{{name}} amount" required></label>
+          {{/if}}
+        </div>
+      </li>
+      {{/each}}
+    </ul>
+    <p class="hint harvest-quantity-help">Random amounts include both bounds and use the currency’s precision. Zero allows no currency.</p>
+    {{else}}<p class="hint">Add currency using the denominations provided by the system.</p>{{/if}}
+  </section>
+  {{/with}}
 {{/inline}}
 
 <div class="harvest-sheet-body" data-harvest-config>
@@ -82,10 +108,11 @@
     {{#if isRewards}}
     <label class="harvest-field"><span>Show Base Items to Players</span><input type="checkbox" data-field="revealItems" {{checked rules.revealItems}}></label>
     <label class="harvest-field"><span>Show Base Tables to Players</span><input type="checkbox" data-field="revealTables" {{checked rules.revealTables}}></label>
+    <label class="harvest-field"><span>Show Base Currency to Players</span><input type="checkbox" data-field="revealCurrency" {{checked rules.revealCurrency}}></label>
     {{> rewards base}}
     {{#if canEditMacro}}<section class="harvest-list">
       <h3>Reward Macro</h3>
-      <p class="hint">Runs on a successful attempt alongside the item and table rewards. Leave the reward lists empty for a macro-only result.</p>
+      <p class="hint">Runs on a successful attempt alongside item, table, and currency rewards. Leave the reward lists empty for a macro-only result.</p>
       {{#if rules.macro}}
       <ul><li>
         {{#if macro.img}}<img src="{{macro.img}}" alt="">{{/if}}

@@ -1,3 +1,5 @@
+import { currencyDefinitions, currencyRows } from "./currency.mjs";
+import { dcTone } from "./chance.mjs";
 import { windowOutcomeMessage } from "./settings.mjs";
 import { matchingTool, toolLabel } from "./tools.mjs";
 import { ID, normalizeRules } from "./rules.mjs";
@@ -56,11 +58,23 @@ const configurationLabels = {
 };
 
 export class HarvestConfig extends BaseWindow {
+  close(options = {}) {
+    // Fixed window styling prevents the core height transition from completing.
+    return super.close({ ...options, animate: false });
+  }
+
   static DEFAULT_OPTIONS = {
     classes: ["harvest-window", "harvest-config"],
     position: { width: 580, height: "auto" },
     window: { resizable: true },
     actions: {
+      addCurrency: function (_event, target) {
+        const def = currencyDefinitions().find(def => def.supported);
+        if (!def) return report(new Error("The system has no supported currencies for this actor."));
+        const list = foundry.utils.getProperty(this.draft, target.dataset.field);
+        list.push({ denomination: def.key, quantity: 1, randomQuantity: false });
+        return this.redraw();
+      },
       chooseSection: function (_event, target) {
         const tab = { settings: "rules", rewards: "rewards", bonuses: "bonuses" }[target.dataset.section];
         if (!tab || this.saving) return;
@@ -69,7 +83,7 @@ export class HarvestConfig extends BaseWindow {
       },
       chooseTab: function (_event, target) { this.tab = target.dataset.tab; return this.redraw(); },
       addTier: function () {
-        this.draft.thresholds.push({ above: 19, double: false, items: [], tables: [] });
+        this.draft.thresholds.push({ above: 19, double: false, items: [], tables: [], currency: [] });
         return this.redraw();
       },
       removeTier: function (_event, target) {
@@ -127,7 +141,16 @@ export class HarvestConfig extends BaseWindow {
     const options = (source, selected) => Object.entries(source).map(([value, entry]) => ({
       value, label: nodeText(game.i18n.localize(entry.label ?? entry), lootMode), selected: value === selected
     }));
+    const definitions = currencyDefinitions();
     const source = async (data, field) => ({
+      currency: {
+        field: `${field}.currency`, canAdd: definitions.some(def => def.supported),
+        rows: currencyRows(data.currency ?? []).map((entry, index) => ({
+          ...entry, path: `${field}.currency.${index}`,
+          choices: [...definitions, ...(!definitions.some(def => def.key === entry.denomination) ? [{ key: entry.denomination, name: entry.name, supported: false }] : [])]
+            .map(def => ({ value: def.key, label: def.supported ? def.name : `${def.name} (unavailable)`, selected: def.key === entry.denomination }))
+        }))
+      },
       groups: await Promise.all(Object.entries(rewardFields).map(async ([key, type]) => ({
         field: `${field}.${key}`, type, name: key === "items" ? "Items" : "Roll Tables",
         rows: await referenceRows(data[key], type)
@@ -188,7 +211,7 @@ export class HarvestConfig extends BaseWindow {
       if (element.hasAttribute("data-random-quantity")) {
         const entry = foundry.utils.getProperty(this.draft, element.dataset.randomQuantity);
         entry.randomQuantity = element.value === "random";
-        entry.minQuantity ??= 1;
+        entry.minQuantity ??= entry.denomination ? entry.quantity : 1;
         entry.maxQuantity ??= entry.quantity;
         return;
       }
@@ -448,7 +471,7 @@ class HarvestWindow extends HarvestConfig {
       depleted: "There is nothing left...",
       blocked: "Harvest is available only at 0 hit points or fewer.",
       ready: failed ? "Seems like you weren't lucky this time."
-        : checked ? "A success will automatically add the items to your inventory." : "Items will automatically be added to your inventory."
+        : checked ? "A success will automatically add rewards to your character." : "Rewards will automatically be added to your character."
     };
     let statusTitle = titles[data.status];
     let statusHelp = nodeText(help[data.status], lootMode);
@@ -483,6 +506,7 @@ class HarvestWindow extends HarvestConfig {
       progressLabel: nodeText(`${data.remaining ?? "Unlimited"} harvests remaining; ${data.harvests} successful; ${data.failures} failed.`, lootMode),
       cardOutcome: failed ? "failure" : data.status === "depleted" ? "success" : "",
       showDC: checked && data.status === "ready" && !this.pending && !data.busy,
+      dcTone: !game.settings.get(ID, "disableDCColors") && !missingTool ? dcTone(harvesterActor, data) : "",
       canUnlock: game.user.isGM && data.status === "locked",
       managing: this.managing,
       showFailures: data.failures > 0,
@@ -659,10 +683,35 @@ export function refreshHarvest(uuid) {
   playerWindows.get(uuid)?.refresh();
 }
 
+const refreshScenes = new Set();
+let refreshQueued = false;
+
 export function refreshInteractions(sceneId) {
-  for (const app of playerWindows.values()) {
-    if (!sceneId || app.token.parent.id === sceneId) app.refresh();
-  }
+  refreshScenes.add(sceneId ?? null);
+  if (refreshQueued) return;
+  refreshQueued = true;
+  queueMicrotask(() => {
+    const all = refreshScenes.has(null);
+    const scenes = new Set(refreshScenes);
+    refreshScenes.clear();
+    refreshQueued = false;
+    for (const app of playerWindows.values()) {
+      if (all || scenes.has(app.token.parent?.id)) app.refresh().catch(report);
+    }
+  });
+}
+
+let settingsRefreshQueued = false;
+export function refreshSettings() {
+  refreshInteractions();
+  if (settingsRefreshQueued) return;
+  settingsRefreshQueued = true;
+  queueMicrotask(() => {
+    settingsRefreshQueued = false;
+    for (const app of configWindows.values()) {
+      if (app.rendered && !app.saving) app.redraw().catch(report);
+    }
+  });
 }
 
 export function closeHarvest(uuid) {

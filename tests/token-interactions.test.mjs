@@ -97,3 +97,17 @@ test("living defeated-only tokens retain native appearance, with border restorat
   hp.value=1;hooks.get('refreshToken')(token);
   assert.equal(token.border.renderable,true);
 });
+
+test("effect, actor flag and synthetic-token changes refresh open interaction windows",()=>{
+  const h=harness();let refreshed=0;h.context.refreshInteractions=()=>{refreshed++;};
+  for(const name of ['createActiveEffect','updateActiveEffect','deleteActiveEffect']){
+    h.callbacks.get(name)({parent:{documentName:'Actor'}});
+    h.callbacks.get(name)({parent:{documentName:'Item',parent:{documentName:'Actor'}}});
+  }
+  assert.equal(refreshed,6);
+  h.callbacks.get('updateActiveEffect')({parent:{documentName:'Item'}});assert.equal(refreshed,6);
+  h.callbacks.get('updateActor')({},{flags:{dnd5e:{halflingLucky:true}}});
+  h.callbacks.get('updateToken')({uuid:'Token.hero',parent:{id:'scene'}},{delta:{effects:[]}});
+  for(const name of ['updateWorldTime','updateCombat','updateCombatant'])h.callbacks.get(name)();
+  assert.equal(refreshed,11);
+});

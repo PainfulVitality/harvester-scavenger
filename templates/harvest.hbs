@@ -40,7 +40,7 @@
             </div>
           </div>
           {{#if showDC}}
-          <div class="harvest-dc" role="img" aria-label="Difficulty Class {{dc}}">
+          <div class="harvest-dc" data-dc-tone="{{dcTone}}" role="img" aria-label="Difficulty Class {{dc}}">
             <svg class="harvest-dc-crest" viewBox="0 0 104 112" fill="none" aria-hidden="true" focusable="false">
               <path class="crest-face" d="M52 3 96 28V82L52 109 8 82V28Z"/>
               <path class="crest-facet crest-facet-light" d="M52 3 96 28 84 35 52 16 20 35 8 28Z"/>
@@ -70,6 +70,15 @@
         <li>{{#if previewKey}}<a class="harvest-item-preview" role="button" tabindex="0" data-action="inspectReward" data-reference="{{previewKey}}" aria-label="View {{name}}">{{#if img}}<img src="{{img}}" alt="">{{/if}}<span>{{name}}</span></a>{{else}}{{#if unknown}}<i class="fa-solid fa-question" aria-hidden="true"></i>{{else}}{{#if img}}<img src="{{img}}" alt="">{{/if}}{{/if}}<span>{{name}}</span>{{/if}}{{#if quantityLabel}}<small>×{{quantityLabel}}</small>{{/if}}{{#if previewKey}}{{> shareReward}}{{/if}}</li>
         {{/each}}
       </ul>
+    </section>
+    {{/if}}
+    {{#if currency.length}}
+    <section class="harvest-list">
+      <h3 class="harvest-section-heading"><i class="fa-solid fa-coins" aria-hidden="true"></i> Currency</h3>
+      <ul>{{#each currency}}<li>
+        {{#if unknown}}<i class="fa-solid fa-question" aria-hidden="true"></i>{{else}}{{#if img}}<img src="{{img}}" alt="">{{else}}<i class="{{icon}}" aria-hidden="true"></i>{{/if}}{{/if}}
+        <span>{{name}}</span>{{#unless unknown}}<small>{{amountLabel}}</small>{{/unless}}
+      </li>{{/each}}</ul>
     </section>
     {{/if}}
     {{#if tables.length}}
