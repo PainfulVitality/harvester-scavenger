@@ -2,7 +2,7 @@
   "id": "harvester-scavenger",
   "title": "Harvester & Scavenger",
   "description": "Harvest and loot tokens with D&D 5e checks, automatic item and currency rewards, roll tables, and optional macros.",
-  "version": "1.15.0",
+  "version": "1.15.1",
   "socket": true,
   "compatibility": {
     "minimum": "14.367",
@@ -57,5 +57,5 @@
   "bugs": "https://github.com/PainfulVitality/harvester-scavenger/issues",
   "changelog": "https://github.com/PainfulVitality/harvester-scavenger/releases",
   "manifest": "https://github.com/PainfulVitality/harvester-scavenger/releases/latest/download/module.json",
-  "download": "https://github.com/PainfulVitality/harvester-scavenger/releases/download/v1.15.0/harvester-scavenger-1.15.0.zip"
+  "download": "https://github.com/PainfulVitality/harvester-scavenger/releases/download/v1.15.1/harvester-scavenger-1.15.1.zip"
 }
