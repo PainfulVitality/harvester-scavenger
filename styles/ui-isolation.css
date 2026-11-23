@@ -1,6 +1,6 @@
 /* Module-owned presentation boundary. Does not change other applications or theme settings.
    Generated from harvest.css; regenerate with python tools/build_ui_isolation.py.
-   Source SHA256: 04b7fe9e21aa277aed8ec7bc9c43f5cf1fd487153031e1716188863af10e1857
+   Source SHA256: 6a3642594c7d2e38cc9eaddf9af091d4cfdee76fb25cc140711af603a823dc0f
    Important layer precedence protects against unlayered theme overrides. Existing explicit
    overrides retain priority, and application positioning remains controlled by Foundry. */
 @layer harvest-owned-ui {
@@ -1272,7 +1272,7 @@ body.theme-dark :is(.harvest-window, .harvest-receipt):not(.theme-light) {
     box-shadow: none !important;
     object-fit: contain !important;
   }
-  .harvest-player .harvest-currency li > img {
+  .harvest-window .harvest-player .harvest-list.harvest-currency li > img {
     width: 13px !important;
     height: 13px !important;
     border: 0 !important;
