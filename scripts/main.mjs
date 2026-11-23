@@ -6,6 +6,7 @@ import { nodeText } from "./wording.mjs";
 import { initializeNameplates } from "./nameplates.mjs";
 import { initializeAuthority } from "./authority.mjs";
 import { initializeAppearance, setHarvestAppearance } from "./appearance.mjs";
+import { captureCurrencyArtwork } from "./currency.mjs";
 import { HarvestConfig, closeHarvest, openConfig, openHarvest, refreshHarvest, refreshInteractions, refreshSettings } from "./windows.mjs";
 
 function renderHarvestHUD(hud, html) {
@@ -42,6 +43,7 @@ function harvestHeaderControl(app, controls) {
 
 Hooks.once("init", () => {
   if (game.system.id !== "dnd5e") return;
+  captureCurrencyArtwork();
   registerPresentationSettings(() => refreshInteractions());
   Handlebars.registerHelper("harvestText", (text, lootMode) => nodeText(text, lootMode === true));
   game.settings.registerMenu(ID, "configureDefaults", {

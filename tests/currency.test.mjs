@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { currencyDefinition, currencyDefinitions, validateCurrencyEntries, collectCurrency, prepareCurrency, grantCurrency } from '../scripts/currency.mjs';
+import { captureCurrencyArtwork, currencyDefinition, currencyDefinitions, validateCurrencyEntries, collectCurrency, prepareCurrency, grantCurrency } from '../scripts/currency.mjs';
 import { defaultRules, normalizeRules, evaluateHarvest, defaultState, validateRules } from '../scripts/rules.mjs';
 import { rewardPreview } from '../scripts/rewards.mjs';
 
@@ -11,7 +11,8 @@ function setup(extra={}) {
  const mapping={initialKeys:config,initialKeysOnly:true};
  const schema={getField:path=>path==='currency'?mapping:Object.hasOwn(config,path.slice(9))?field:null};
  globalThis.CONFIG={DND5E:{currencies:config},Actor:{dataModels:{character:{schema}}}};
- globalThis.game={i18n:{localize:value=>value}};
+ globalThis.game={i18n:{localize:value=>value},modules:new Map(),settings:{get:()=>undefined}};
+ captureCurrencyArtwork();
  return {config,field,mapping,schema};
 }
 function actor(wallet={gp:10,sp:0,credits:1.25},hook) {
@@ -30,6 +31,23 @@ test('current system names, icons, precision, and custom denominations drive row
  assert.equal(currencyDefinition('gp').name,'Crowns');
  const credits=currencyDefinitions().find(def=>def.key==='credits');assert.equal(credits.step,0.01);assert.equal(credits.img,'');assert.equal(credits.icon,'fa-solid fa-gem');assert.equal(credits.supported,true);
  config.credits.icon='icons/custom.svg';assert.equal(currencyDefinition('credits').img,'icons/custom.svg');
+ config.credits.icon='fa-solid fa-gem';config.credits.img='icons/coins/credits.webp';
+ assert.equal(currencyDefinition('credits').img,'icons/coins/credits.webp');
+ config.credits.image='icons/coins/credits-alt.webp';
+ assert.equal(currencyDefinition('credits').img,'icons/coins/credits.webp');
+});
+test('renamed system currency keeps its own captured artwork',()=>{
+ const {config}=setup();config.gp.icon='systems/dnd5e/icons/currency/crown.webp';captureCurrencyArtwork();
+ CONFIG.DND5E.currencies.gp={label:'Crowns',abbreviation:'Cr',conversion:1};
+ assert.equal(currencyDefinition('gp').img,'systems/dnd5e/icons/currency/crown.webp');
+});
+test('custom D&D 5e artwork is read only while its module is active',()=>{
+ setup();let reads=0;game.settings.get=()=>{reads++;throw Error('inactive module must not be queried');};
+ assert.equal(currencyDefinition('gp').img,'');assert.equal(reads,0);
+ game.modules.set('custom-dnd5e',{active:true});game.settings.get=(namespace,key)=>{
+   assert.equal(namespace,'custom-dnd5e');assert.equal(key,'currency');return {gp:{icon:'icons/coins/crown.webp'}};
+ };
+ assert.equal(currencyDefinition('gp').img,'icons/coins/crown.webp');
 });
 for(const denomination of ['__proto__','constructor','prototype','gp.foo','../gp','gp[0]','gp\\x','gp\n','']) test(`unsafe denomination ${JSON.stringify(denomination)} is rejected`,()=>{
  setup();assert.throws(()=>validateCurrencyEntries([entry(denomination,1)]));

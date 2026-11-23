@@ -1,6 +1,6 @@
 /* Module-owned presentation boundary. Does not change other applications or theme settings.
    Generated from harvest.css; regenerate with python tools/build_ui_isolation.py.
-   Source SHA256: f6adccb18e9b8dd05c8da57742c0ca17a9b10d23af6e7d0e14bcf30f9d6a61ad
+   Source SHA256: 04b7fe9e21aa277aed8ec7bc9c43f5cf1fd487153031e1716188863af10e1857
    Important layer precedence protects against unlayered theme overrides. Existing explicit
    overrides retain priority, and application positioning remains controlled by Foundry. */
 @layer harvest-owned-ui {
@@ -1263,6 +1263,31 @@ body.theme-dark :is(.harvest-window, .harvest-receipt):not(.theme-light) {
     flex: 0 0 20px !important;
     color: var(--harvest-chat-accent) !important;
     text-align: center !important;
+  }
+  .harvest-config .harvest-currency-row > img {
+    width: 12px !important;
+    height: 12px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    object-fit: contain !important;
+  }
+  .harvest-player .harvest-currency li > img {
+    width: 13px !important;
+    height: 13px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    object-fit: contain !important;
+  }
+  .harvest-receipt .harvest-currency li > img {
+    flex-basis: 10px !important;
+    width: 10px !important;
+    height: 10px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    object-fit: contain !important;
   }
   }
 }

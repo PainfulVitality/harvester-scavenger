@@ -19,7 +19,7 @@
   {{/if}}
   {{#if currency.length}}
   <h4>Currency</h4>
-  <ul>{{#each currency}}<li>
+  <ul class="harvest-currency">{{#each currency}}<li>
     {{#if img}}<img src="{{img}}" alt="" height="20">{{else}}<i class="{{icon}}" aria-hidden="true"></i>{{/if}}
     <label>{{name}}</label><small>{{amountLabel}}</small>
   </li>{{/each}}</ul>

@@ -6,6 +6,29 @@ export const validDenomination = key => typeof key === "string" && key.length > 
 
 function registry() { return globalThis.CONFIG?.DND5E?.currencies ?? {}; }
 function localize(text) { return globalThis.game?.i18n?.localize?.(text) ?? text; }
+const capturedArtwork = new Map();
+
+function imagePath(...values) {
+  return values.find(value => typeof value === "string" && value.trim()
+    && !/^fa[\w-]*(?:\s|$)/.test(value)) ?? "";
+}
+
+// Some currency customizers replace the registry later, while retaining only
+// labels and conversion rates. Snapshot the system-provided artwork first.
+export function captureCurrencyArtwork() {
+  capturedArtwork.clear();
+  for (const [key, definition] of Object.entries(registry())) {
+    const image = imagePath(definition?.img, definition?.image, definition?.icon);
+    if (image) capturedArtwork.set(key, image);
+  }
+}
+
+function customDnd5eArtwork(key) {
+  if (globalThis.game?.modules?.get("custom-dnd5e")?.active !== true) return "";
+  try {
+    return imagePath(globalThis.game.settings?.get("custom-dnd5e", "currency")?.[key]?.icon);
+  } catch { return ""; }
+}
 function fieldFor(actor, key) {
   const schema = actor?.system?.schema ?? globalThis.CONFIG?.Actor?.dataModels?.character?.schema;
   try { return schema?.getField(`currency.${key}`); } catch { return null; }
@@ -38,10 +61,14 @@ export function currencyDefinition(key, actor) {
   else if (!Number.isInteger(precision) || precision < 0 || precision > 20) precision = undefined;
   const supported = validDenomination(key) && knownField(actor, key) && precision !== undefined
     && (configured || !Object.keys(registry()).length && (field || actor && Object.hasOwn(actor.system?.currency ?? {}, key)));
+  // Systems and system extensions commonly use `icon`, but some expose the
+  // denomination artwork as `img` or `image`. Keep that exact artwork through
+  // every currency row instead of replacing it with the generic coins glyph.
   const icon = typeof info.icon === "string" ? info.icon : "";
+  const image = imagePath(info.img, info.image, icon) || customDnd5eArtwork(key) || capturedArtwork.get(key) || "";
   return { key, name: localize(info.label ?? (typeof config === "string" ? config : key)),
     abbreviation: localize(info.abbreviation ?? key), precision, step: precision == null ? "any" : 10 ** -precision,
-    img: /^fa[\w-]*(?:\s|$)/.test(icon) ? "" : icon,
+    img: image,
     icon: /^fa[\w-]*(?:\s|$)/.test(icon) ? icon : "fa-solid fa-coins", supported: Boolean(supported),
     conversion: Number.isFinite(info.conversion) && info.conversion > 0 ? info.conversion : null };
 }
