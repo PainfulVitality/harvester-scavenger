@@ -14,7 +14,7 @@ https://github.com/PainfulVitality/harvester-scavenger/releases/latest/download/
 
 ## How to use
 
-Right-click an actor and pick **Configure Harvest Template**, or use a token's **Harvest Settings**. Turn it on, pick a check and add rewards. Double-click the token to harvest or loot.
+In a token's sheet, open the expanded menu (three-dots) and open **Harvest Settings**. Turn it on, pick a check and add rewards. Double-click the token to harvest or loot.
 
 Items and currency can have fixed or random amounts. Currency uses the system’s current denominations, names and decimal precision. Revealed items can be previewed and posted in chat, even if players don't own the source actor.
 
